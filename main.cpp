@@ -1,10 +1,10 @@
-#include <filesystem>
 #include <iostream>
 #include <print>
 #include <fstream>
-#include <stack>
 
 #include "main.h"
+
+#include <random>
 
 
 Chip8::Chip8()
@@ -65,8 +65,10 @@ auto Chip8::main_loop() -> void
     while (true)
     {
         const auto opcode = fetch();
-        const auto instruction = decode(opcode);
-        execute(instruction);
+
+        const auto nibbles = get_nibbles(opcode);
+        const auto instruction = decode(opcode, nibbles);
+        execute(instruction, nibbles);
     }
 }
 
@@ -75,19 +77,18 @@ auto Chip8::fetch() const -> std::uint16_t
     const auto opcode_first_byte = m_memory.at(m_program_counter);
     const auto opcode_second_byte = m_memory.at(m_program_counter + 1);
 
-    std::uint16_t opcode = 0x0000;
+    std::uint16_t opcode = 0x0;
     opcode = opcode | opcode_first_byte << 8;
     opcode = opcode | opcode_second_byte << 0;
 
     return opcode;
 }
 
-auto Chip8::decode(const std::uint16_t opcode) -> Instruction
+auto Chip8::decode(const std::uint16_t opcode, const Nibbles nibbles) -> Instruction
 {
-    auto nibbles = get_nibbles(opcode);
-    auto& [first_nibble, second_nibble, third_nibble, fourth_nibble] = nibbles;
+    auto& [first_nibble, second_nibble,
+        third_nibble, fourth_nibble] = nibbles;
 
-    Instruction instruction{Instruction::UNINITIALIZED};
     switch (first_nibble)
     {
     case 0x0:
@@ -139,10 +140,11 @@ auto Chip8::decode(const std::uint16_t opcode) -> Instruction
         return get_instruction_FXXX(third_nibble, fourth_nibble);
         break;
     default:
-        throw std::invalid_argument("Invalid OPCODE!");
+        throw std::invalid_argument("Invalid opcode!");
+        break;
     }
 
-    return instruction;
+    return Instruction::UNINITIALIZED;
 }
 
 auto Chip8::get_instruction_0XXX(const std::uint8_t third_nibble, const std::uint8_t fourth_nibble) -> Instruction
@@ -257,56 +259,163 @@ auto Chip8::get_instruction_FXXX(const std::uint8_t third_nibble, const std::uin
     return Instruction::UNINITIALIZED;
 }
 
-auto Chip8::execute(const Instruction instruction) -> void
+auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> void
 {
+    auto& [first_nibble, second_nibble,
+        third_nibble, fourth_nibble] = nibbles;
+
     switch (instruction)
     {
     case Instruction::I_00E0:
+        clear_screen();
         break;
     case Instruction::I_00EE:
+        m_program_counter = m_stack.top();
+        m_stack.pop();
         break;
+
     case Instruction::I_1NNN:
+        m_program_counter = get_number_NNN(second_nibble, third_nibble, fourth_nibble);
         break;
+
     case Instruction::I_2NNN:
+        m_stack.push(m_program_counter);
+        m_program_counter = get_number_NNN(second_nibble, third_nibble, fourth_nibble);
         break;
+
     case Instruction::I_3XNN:
+        if (m_registers.at(second_nibble) == get_number_NN(third_nibble, fourth_nibble))
+        {
+            m_program_counter += 1;
+        }
         break;
+
     case Instruction::I_4XNN:
+        if (m_registers.at(second_nibble) != get_number_NN(third_nibble, fourth_nibble))
+        {
+            m_program_counter += 1;
+        }
         break;
+
     case Instruction::I_5XY0:
+        if (m_registers.at(second_nibble) == m_registers.at(third_nibble))
+        {
+            m_program_counter += 1;
+        }
         break;
+
     case Instruction::I_9XY0:
+        if (m_registers.at(second_nibble) != m_registers.at(third_nibble))
+        {
+            m_program_counter += 1;
+        }
         break;
+
     case Instruction::I_6XNN:
+        m_registers.at(second_nibble) = get_number_NN(third_nibble, fourth_nibble);
         break;
+
     case Instruction::I_7XNN:
+        // carry flag?
+        m_registers.at(second_nibble) += get_number_NN(third_nibble, fourth_nibble);
         break;
+
     case Instruction::I_8XY0:
+        m_registers.at(second_nibble) = m_registers.at(third_nibble);
         break;
+
     case Instruction::I_8XY1:
+        m_registers.at(second_nibble) |= m_registers.at(third_nibble);
         break;
+
     case Instruction::I_8XY2:
+        m_registers.at(second_nibble) &= m_registers.at(third_nibble);
         break;
+
     case Instruction::I_8XY3:
+        m_registers.at(second_nibble) ^= m_registers.at(third_nibble);
         break;
+
     case Instruction::I_8XY4:
+        m_registers.at(second_nibble) += m_registers.at(third_nibble);
         break;
+
     case Instruction::I_8XY5:
+        m_registers.at(second_nibble) = m_registers.at(second_nibble) - m_registers.at(third_nibble); // VX - VY
         break;
     case Instruction::I_8XY7:
+        m_registers.at(second_nibble) = m_registers.at(third_nibble) - m_registers.at(third_nibble); // VY - VX
         break;
-    case Instruction::I_8XY6:
+    case Instruction::I_8XY6: // TODO: Implement further options later
+        m_registers.at(second_nibble) = m_registers.at(third_nibble) >> 1;
         break;
-    case Instruction::I_8XYE:
+
+    case Instruction::I_8XYE: // TODO: Implement further options later
+        m_registers.at(second_nibble) = m_registers.at(third_nibble) << 1;
         break;
+
     case Instruction::I_ANNN:
+        m_index_register = get_number_NNN(second_nibble, third_nibble, fourth_nibble);
         break;
-    case Instruction::I_BNNN:
+
+    case Instruction::I_BNNN: // TODO: Implement further options later
+        m_program_counter = get_number_NNN(second_nibble, third_nibble, fourth_nibble) + m_registers.at(0);
         break;
+
     case Instruction::I_CXNN:
+        {
+            std::random_device dev;
+            std::mt19937 rng(dev());
+            std::uniform_int_distribution<std::mt19937::result_type> dist(0,255);
+
+            m_registers.at(second_nibble) = dist(rng) & get_number_NN(third_nibble, fourth_nibble);
+        }
         break;
+
     case Instruction::I_DXYN:
+        {
+            auto X = m_registers.at(second_nibble) % 64;
+            auto Y = m_registers.at(third_nibble) % 32;
+
+            auto& VF = m_registers.at(15);
+            VF = 0; // set VF 0 -> pixel turned off?
+
+            const auto pixel_bits = m_memory.at(m_index_register + fourth_nibble);
+
+            std::uint8_t check_bits = 0x80;
+            while (true)
+            {
+                if ( check_bits & pixel_bits)
+                {
+                    if (m_display.at(X * Y) == 1)
+                    {
+                        m_display.at(X * Y) = 0;
+                        VF = 1;
+                    }
+                    else
+                    {
+                        m_display.at(X * Y) = 1;
+                    }
+
+                }
+                if (check_bits == 1)
+                {
+                    break;
+                }
+
+                check_bits = check_bits >> 1;
+
+                X += 1;
+                Y += 1;
+
+                if (X % 64 == 0 or Y % 32 == 0)
+                {
+                    break;
+                }
+            }
+        }
         break;
+
     case Instruction::I_EX9E:
         break;
     case Instruction::I_EXA1:
@@ -347,6 +456,17 @@ auto Chip8::get_nibbles(std::uint16_t instruction) -> Nibbles
     };
 
     return nibbles;
+}
+
+auto Chip8::get_number_NN(const std::uint8_t third_nibble, const std::uint8_t fourth_nibble) -> std::uint16_t
+{
+    return third_nibble << 4 | fourth_nibble << 0;
+}
+
+auto Chip8::get_number_NNN(const std::uint8_t second_nibble, const std::uint8_t third_nibble,
+    const std::uint8_t fourth_nibble) -> std::uint16_t
+{
+    return second_nibble << 8 | third_nibble << 4 | fourth_nibble << 0;
 }
 
 auto Chip8::clear_screen() -> void

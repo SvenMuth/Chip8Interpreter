@@ -6,7 +6,6 @@
 #define MAIN_H
 
 #include <filesystem>
-#include <print>
 #include <stack>
 
 class Chip8
@@ -47,7 +46,7 @@ public:
     [[noreturn]] auto main_loop() -> void;
 
     [[nodiscard]] auto fetch() const -> std::uint16_t;
-    [[nodiscard]] static auto decode(std::uint16_t opcode) -> Instruction;
+    [[nodiscard]] static auto decode(std::uint16_t opcode, Nibbles nibbles) -> Instruction;
 
     [[nodiscard]] static auto get_instruction_0XXX(std::uint8_t third_nibble,
         std::uint8_t fourth_nibble) -> Instruction;
@@ -59,8 +58,13 @@ public:
     [[nodiscard]] static auto get_instruction_FXXX(std::uint8_t third_nibble,
         std::uint8_t fourth_nibble) -> Instruction;
 
-    auto execute(Instruction instruction) -> void;
+    auto execute(Instruction instruction, Nibbles nibbles) -> void;
     [[nodiscard]] static auto get_nibbles(std::uint16_t instruction) -> Nibbles;
+
+    static auto Chip8::get_number_NN(std::uint8_t third_nibble, std::uint8_t fourth_nibble) -> std::uint16_t;
+    static auto Chip8::get_number_NNN(std::uint8_t second_nibble, std::uint8_t third_nibble,
+                               std::uint8_t fourth_nibble) -> std::uint16_t;
+
     auto clear_screen() -> void;
 
 private:
