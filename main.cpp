@@ -6,6 +6,10 @@
 
 #include "main.h"
 
+#include <thread>
+
+using namespace std::chrono_literals;
+
 Chip8::Chip8()
 {
     m_program_counter = START_ADDRESS;
@@ -47,14 +51,27 @@ auto Chip8::main_loop() -> void
 {
     while (true)
     {
+
+        std::this_thread::sleep_for(5ms);
         const auto opcode = fetch();
 
         const auto nibbles = get_nibbles(opcode);
         const auto instruction = decode(nibbles);
 
         execute(instruction, nibbles);
+
+        if (m_delay_timer > 0)
+        {
+            m_delay_timer--;
+        }
+
+        if (m_sound_timer > 0)
+        {
+            m_sound_timer--;
+        }
     }
 }
+
 
 auto Chip8::fetch() -> std::uint16_t
 {
@@ -200,145 +217,42 @@ auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> voi
 
     switch (instruction)
     {
-    case Instruction::I_00E0:
-        OP_00E0();
-        break;
-
-    case Instruction::I_00EE:
-        OP_00EE();
-        break;
-
-    case Instruction::I_1NNN:
-        OP_1NNN(nibbles);
-        break;
-
-    case Instruction::I_2NNN:
-        OP_2NNN(nibbles);
-        break;
-
-    case Instruction::I_3XNN:
-        OP_3XNN(VX, nibbles);
-        break;
-
-    case Instruction::I_4XNN:
-        OP_4XN(VX, nibbles);
-        break;
-
-    case Instruction::I_5XY0:
-        OP_5XY0(VX, VY);
-        break;
-
-    case Instruction::I_9XY0:
-        OP_9XY0(VX, VY);
-        break;
-
-    case Instruction::I_6XNN:
-        OP_6XNN(VX, nibbles);
-        break;
-
-    case Instruction::I_7XNN:
-        //carry flag?
-        OP_7XNN(VX, nibbles);
-        break;
-
-    case Instruction::I_8XY0:
-        OP_8XY0(VX, VY);
-        break;
-
-    case Instruction::I_8XY1:
-        OP_8XY1(VX, VY);
-        break;
-
-    case Instruction::I_8XY2:
-        OP_8XY2(VX, VY);
-        break;
-
-    case Instruction::I_8XY3:
-        OP_8XY3(VX, VY);
-        break;
-
-    case Instruction::I_8XY4:
-        OP_8XY4(VX, VY);
-        break;
-
-    case Instruction::I_8XY5:
-        OP_8XY4(VX, VY);
-        break;
-    case Instruction::I_8XY7:
-        OP_8XY7(VX, VY);
-        break;
-    case Instruction::I_8XY6: //TODO: Implement further options later
-        OP_8XY6(VX, VY);
-        break;
-
-    case Instruction::I_8XYE: //TODO: Implement further options later
-        OP_8XYE(VX, VY);
-        break;
-
-    case Instruction::I_ANNN:
-        OP_ANNN(nibbles);
-        break;
-
-    case Instruction::I_BNNN: //TODO: Implement further options later
-        OP_BNNN(nibbles);
-        break;
-
-    case Instruction::I_CXNN:
-        OP_CXNN(nibbles);
-        break;
-
-    case Instruction::I_DXYN:
-        OP_DXYN(nibbles);
-        break;
-
-    case Instruction::I_EX9E:
-        OP_EX9E(VX);
-        break;
-
-    case Instruction::I_EXA1:
-        OP_EXA1(VX);
-        break;
-
-    case Instruction::I_FX07:
-        OP_FX07(VX);
-        break;
-
-    case Instruction::I_FX15:
-        OP_FX15(VX);
-        break;
-
-    case Instruction::I_FX18:
-        OP_FX18(VX);
-        break;
-
-    case Instruction::I_FX1E:
-        OP_FX1E(VX);
-        break;
-
-    case Instruction::I_FX0A:
-        OP_FX0A(VX);
-        break;
-
-    case Instruction::I_FX29: //Research instruction
-        OP_FX29();
-        break;
-
-    case Instruction::I_FX33:
-        OP_FX33(nibbles);
-        break;
-
-    case Instruction::I_FX55:
-        OP_FX55(nibbles);
-        break;
-
-    case Instruction::I_FX65: //TODO: check if implemented correctly
-        OP_FX65(nibbles);
-        break;
-
+    case Instruction::I_00E0: OP_00E0(); break;
+    case Instruction::I_00EE: OP_00EE(); break;
+    case Instruction::I_1NNN: OP_1NNN(nibbles); break;
+    case Instruction::I_2NNN: OP_2NNN(nibbles); break;
+    case Instruction::I_3XNN: OP_3XNN(nibbles); break;
+    case Instruction::I_4XNN: OP_4XN(nibbles); break;
+    case Instruction::I_5XY0: OP_5XY0(nibbles); break;
+    case Instruction::I_9XY0: OP_9XY0(nibbles); break;
+    case Instruction::I_6XNN: OP_6XNN(nibbles); break;
+    case Instruction::I_7XNN: OP_7XNN(nibbles); break;
+    case Instruction::I_8XY0: OP_8XY0(nibbles); break;
+    case Instruction::I_8XY1: OP_8XY1(nibbles); break;
+    case Instruction::I_8XY2: OP_8XY2(nibbles); break;
+    case Instruction::I_8XY3: OP_8XY3(nibbles); break;
+    case Instruction::I_8XY4: OP_8XY4(nibbles); break;
+    case Instruction::I_8XY5: OP_8XY5(nibbles); break;
+    case Instruction::I_8XY7: OP_8XY7(nibbles); break;
+    case Instruction::I_8XY6: OP_8XY6(nibbles); break;
+    case Instruction::I_8XYE: OP_8XYE(nibbles); break;
+    case Instruction::I_ANNN: OP_ANNN(nibbles); break;
+    case Instruction::I_BNNN: OP_BNNN(nibbles); break;
+    case Instruction::I_CXNN: OP_CXNN(nibbles); break;
+    case Instruction::I_DXYN: OP_DXYN(nibbles); break;
+    case Instruction::I_EX9E: OP_EX9E(nibbles); break;
+    case Instruction::I_EXA1: OP_EXA1(nibbles); break;
+    case Instruction::I_FX07: OP_FX07(nibbles); break;
+    case Instruction::I_FX15: OP_FX15(nibbles); break;
+    case Instruction::I_FX18: OP_FX18(nibbles); break;
+    case Instruction::I_FX1E: OP_FX1E(nibbles); break;
+    case Instruction::I_FX0A: OP_FX0A(nibbles); break;
+    case Instruction::I_FX29: OP_FX29(nibbles); break;
+    case Instruction::I_FX33: OP_FX33(nibbles); break;
+    case Instruction::I_FX55: OP_FX55(nibbles); break;
+    case Instruction::I_FX65: OP_FX65(nibbles); break;
     case Instruction::UNINITIALIZED:
-    default:
-        throw std::invalid_argument("Instruction is not valid!");
-        break;
+    default: throw std::invalid_argument("Instruction is not valid!"); break;
     }
 }
 
@@ -364,80 +278,138 @@ auto Chip8::OP_2NNN(const Nibbles nibbles) -> void
     m_program_counter = get_number_NNN(nibbles);
 }
 
-auto Chip8::OP_3XNN(const std::uint8_t& VX, const Nibbles nibbles) -> void
+auto Chip8::OP_3XNN(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
     if (VX == get_number_NN(nibbles)) m_program_counter += 2;
 }
 
-auto Chip8::OP_4XN(const std::uint8_t& VX, const Nibbles nibbles) -> void
+auto Chip8::OP_4XN(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
     if (VX != get_number_NN(nibbles)) m_program_counter += 2;
 }
 
-auto Chip8::OP_5XY0(const std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
     if (VX == VY) m_program_counter += 2;
 }
 
-auto Chip8::OP_9XY0(const std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_9XY0(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
     if (VX != VY) m_program_counter += 2;
 }
 
-auto Chip8::OP_6XNN(std::uint8_t& VX, const Nibbles nibbles) -> void
+auto Chip8::OP_6XNN(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
     VX = get_number_NN(nibbles);
 }
 
-auto Chip8::OP_7XNN(std::uint8_t& VX, const Nibbles nibbles) -> void
+auto Chip8::OP_7XNN(const Nibbles nibbles) -> void
 {
-    //carry flag?
+    auto& VX = m_registers.at(nibbles.second_nibble);
     VX += get_number_NN(nibbles);
 }
 
-auto Chip8::OP_8XY0(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY0(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
     VX = VY;
 }
 
-auto Chip8::OP_8XY1(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY1(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
     VX |= VY;
 }
 
-auto Chip8::OP_8XY2(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY2(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
     VX &= VY;
 }
 
-auto Chip8::OP_8XY3(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY3(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
     VX ^= VY;
 }
 
-auto Chip8::OP_8XY4(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
 {
-    VX += VY;
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const std::uint16_t sum = VX + VY;
+
+    if (sum > 255)
+    {
+        m_registers.at(0xF) = 1;
+    }
+    else
+    {
+        m_registers.at(0xF) = 0;
+    }
+
+    VX = sum & 0xFF;
 }
 
-auto Chip8::OP_8XY5(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
+    if (VX > VY)
+    {
+        m_registers.at(0xF) = 1;
+    }
+    else
+    {
+        m_registers.at(0xF) = 0;
+    }
+
     VX = VX - VY;
 }
 
-auto Chip8::OP_8XY7(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
+    if (VY > VX)
+    {
+        m_registers.at(0xF) = 1;
+    }
+    else
+    {
+        m_registers.at(0xF) = 0;
+    }
+
     VX = VY - VX;
 }
 
-auto Chip8::OP_8XY6(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XY6(const Nibbles nibbles) -> void
 {
-    VX = VY >> 1;
+    //TODO: Implement further options later
+    auto& VX = m_registers.at(nibbles.second_nibble);
+
+    m_registers.at(0xF) = VX & 0x1;
+    VX >>= 1;
 }
 
-auto Chip8::OP_8XYE(std::uint8_t& VX, const std::uint8_t& VY) -> void
+auto Chip8::OP_8XYE(const Nibbles nibbles) -> void
 {
-    VX = VY << 1;
+    //TODO: Implement further options later
+    auto& VX = m_registers.at(nibbles.second_nibble);
+
+    m_registers.at(0xF) = (VX & 0x80u) >> 7u;
+    VX <<= 1;
 }
 
 auto Chip8::OP_ANNN(const Nibbles nibbles) -> void
@@ -447,6 +419,7 @@ auto Chip8::OP_ANNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_BNNN(const Nibbles nibbles) -> void
 {
+    //TODO: Implement further options later
     m_program_counter = get_number_NNN(nibbles) + m_registers.at(0);
 }
 
@@ -461,7 +434,7 @@ auto Chip8::OP_CXNN(const Nibbles nibbles) -> void
     VX = dist(rng) & get_number_NN(nibbles);
 }
 
-auto Chip8::OP_DXYN(Nibbles nibbles) -> void
+auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 {
     auto [first_nibble, second_nibble,
         third_nibble, fourth_nibble] = nibbles;
@@ -469,94 +442,125 @@ auto Chip8::OP_DXYN(Nibbles nibbles) -> void
     const auto& VX = m_registers.at(second_nibble);
     const auto& VY = m_registers.at(third_nibble);
 
-    auto X = VX % 64;
-    auto Y = VY % 32;
+    const auto X = VX % DISPLAY_WIDTH;
+    const auto Y = VY % DISPLAY_HEIGHT;
 
     auto& VF = m_registers.at(15);
-    VF = 0; //set VF 0 -> pixel turned off?
+    VF = 0;
 
-    const auto pixel_bits = m_memory.at(m_index_register + fourth_nibble);
-
-    std::uint8_t check_bits{0x80};
-    int counter{0};
-
-    while (true)
+    for (int row{0}; row < fourth_nibble; row++)
     {
-        if (check_bits & pixel_bits)
+        const uint8_t sprite_byte = m_memory.at(m_index_register + row);
+        for (unsigned int col = 0; col < 8; col++)
         {
-            if (m_display.at(X * Y) == 1)
+            const uint8_t sprite_pixel = sprite_byte & (0x80 >> col);
+            bool& screen_pixel = m_display.at((Y + row) * DISPLAY_WIDTH + (X + col));
+
+            if (sprite_pixel)
             {
-                m_display.at(X * Y) = false;
-                VF = 1;
+                if (screen_pixel)
+                {
+                    VF = 1;
+                }
+
+                screen_pixel = !screen_pixel;
             }
-            else
-            {
-                m_display.at(X * Y) = true;
-            }
         }
-        if (counter == 7) //right value?
+    }
+
+    //Clear terminal
+    std::print("\033[H\033[J");
+    std::print("\n\n\t\t\t\t");
+    for (int counter{1}; const auto& pixel: m_display)
+    {
+        if (pixel)
         {
-            break;
+            //White Large Square Unicode
+            std::print("\u2B1C");
         }
-
-        check_bits = check_bits >> 1;
-
-        X += 1;
-        Y += 1;
-
-        if (X % 64 == 0 or Y % 32 == 0)
+        else
         {
-            break;
+            //Black Large Square Unicode
+            std::print("\u2B1B");
         }
 
+        if (counter % DISPLAY_WIDTH == 0)
+        {
+            std::print("\n\t\t\t\t");
+        }
         counter++;
     }
 }
 
-auto Chip8::OP_EX9E(const std::uint8_t& VX) -> void
+auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 {
+    //have to be tested
+    auto& VX = m_registers.at(nibbles.second_nibble);
+
     const auto val = get_value_char_to_key_map(getch());
     if (VX == val && val < 0xF) m_program_counter += 2;
 }
 
-auto Chip8::OP_EXA1(const std::uint8_t& VX) -> void
+auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 {
+    //have to be tested
+    auto& VX = m_registers.at(nibbles.second_nibble);
+
     const auto val = get_value_char_to_key_map(getch());
-    if (VX != val && val < 0xF) m_program_counter += 2;
+    if (VX != val && val) m_program_counter += 2;
 }
 
-auto Chip8::OP_FX07(std::uint8_t& VX) const -> void
+auto Chip8::OP_FX07(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
     VX = m_delay_timer;
 }
 
-auto Chip8::OP_FX15(const std::uint8_t& VX) -> void
+auto Chip8::OP_FX15(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto& VY = m_registers.at(nibbles.third_nibble);
+
     m_delay_timer = VX;
 }
 
-auto Chip8::OP_FX18(const std::uint8_t& VX) -> void
+auto Chip8::OP_FX18(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
     m_sound_timer = VX;
 }
 
-auto Chip8::OP_FX1E(const std::uint8_t& VX) -> void
+auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
     m_index_register += VX;
 }
 
-auto Chip8::OP_FX0A(std::uint8_t& VX) -> void
+auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
-    VX = get_value_char_to_key_map(std::getchar());
+    auto& VX = m_registers.at(nibbles.second_nibble);
+
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    const auto val = get_value_char_to_key_map(std::getchar());
+
+    if (val > 0xF)
+    {
+        m_program_counter -= 2;
+        return;
+    }
+
+    VX = val;
 }
 
-auto Chip8::OP_FX29() -> void
+auto Chip8::OP_FX29(const Nibbles nibbles) -> void
 {
+    auto& VX = m_registers.at(nibbles.second_nibble);
+    m_index_register = FONTSET_START_ADDRESS + (5 * VX);
 }
 
 auto Chip8::OP_FX33(const Nibbles nibbles) -> void
 {
+    //have to be tested
     const auto& VX = m_registers.at(nibbles.second_nibble);
 
     auto number = VX;
@@ -581,11 +585,14 @@ auto Chip8::OP_FX33(const Nibbles nibbles) -> void
 auto Chip8::OP_FX55(const Nibbles nibbles) -> void
 {
     auto I = m_index_register;
-    if (nibbles.second_nibble != 0)
+    const auto VX = nibbles.second_nibble;
+
+    //Is the if statement needed?
+    if (VX != 0)
     {
-        for (int index = 0; index < nibbles.second_nibble; index++)
+        for (unsigned int index = 0; index < VX; index++)
         {
-            m_memory.at(I) = m_registers.at(index);
+            m_memory.at(I + index) = m_registers.at(index);
             I++;
         }
     }
@@ -597,12 +604,16 @@ auto Chip8::OP_FX55(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX65(const Nibbles nibbles) -> void
 {
+    //TODO: check if implemented correctly
     auto I = m_index_register;
-    if (nibbles.second_nibble != 0)
+    const auto VX = nibbles.second_nibble;
+
+    //Is the if statement needed?
+    if (VX != 0)
     {
-        for (int index = 0; index < nibbles.second_nibble; index++)
+        for (unsigned int index = 0; index < VX; index++)
         {
-            m_registers.at(I) = m_memory.at(index);
+            m_registers.at(index) = m_memory.at(I + index);
             I++;
         }
     }
@@ -656,9 +667,6 @@ auto Chip8::get_number_NNN(const Nibbles nibbles) -> std::uint16_t
 
 auto main(int argc, char** argv) -> int
 {
-    //std::string c = "\u2B1C";
-    //std::print("{}",c); //works in real terminal
-
     try
     {
         //init ncurses

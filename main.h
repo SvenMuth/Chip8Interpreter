@@ -59,6 +59,8 @@ public:
 
     static constexpr std::uint16_t START_ADDRESS{0x200};
     static constexpr int FONTSET_START_ADDRESS{0x50};
+    static constexpr int DISPLAY_WIDTH{64};
+    static constexpr int DISPLAY_HEIGHT{32};
 
     static inline const std::unordered_map<int, Keymap> CHAR_TO_KEYMAP{
             {49, Keymap::K_1}, {50, Keymap::K_2}, {51, Keymap::K_3}, {52, Keymap::K_4},
@@ -105,33 +107,33 @@ public:
     auto OP_00EE() -> void;
     auto OP_1NNN(Nibbles nibbles) -> void;
     auto OP_2NNN(Nibbles nibbles) -> void;
-    auto OP_3XNN(const std::uint8_t& VX, Nibbles nibbles) -> void;
-    auto OP_4XN(const std::uint8_t& VX, Nibbles nibbles) -> void;
-    auto OP_5XY0(const std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    auto OP_9XY0(const std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_6XNN(std::uint8_t& VX, Nibbles nibbles) -> void;
-    static auto OP_7XNN(std::uint8_t& VX, Nibbles nibbles) -> void;
-    static auto OP_8XY0(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY1(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY2(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY3(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY4(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY5(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY7(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XY6(std::uint8_t& VX, const std::uint8_t& VY) -> void;
-    static auto OP_8XYE(std::uint8_t& VX, const std::uint8_t& VY) -> void;
+    auto OP_3XNN(Nibbles nibbles) -> void;
+    auto OP_4XN(Nibbles nibbles) -> void;
+    auto OP_5XY0(Nibbles nibbles) -> void;
+    auto OP_9XY0(Nibbles nibbles) -> void;
+    auto OP_6XNN(Nibbles nibbles) -> void;
+    auto OP_7XNN(Nibbles nibbles) -> void;
+    auto OP_8XY0(Nibbles nibbles) -> void;
+    auto OP_8XY1(Nibbles nibbles) -> void;
+    auto OP_8XY2(Nibbles nibbles) -> void;
+    auto OP_8XY3(Nibbles nibbles) -> void;
+    auto OP_8XY4(Nibbles nibbles) -> void;
+    auto OP_8XY5(Nibbles nibbles) -> void;
+    auto OP_8XY7(Nibbles nibbles) -> void;
+    auto OP_8XY6(Nibbles nibbles) -> void;
+    auto OP_8XYE(Nibbles nibbles) -> void;
     auto OP_ANNN(Nibbles nibbles) -> void;
     auto OP_BNNN(Nibbles nibbles) -> void;
     auto OP_CXNN(Nibbles nibbles) -> void;
     auto OP_DXYN(Nibbles nibbles) -> void;
-    auto OP_EX9E(const std::uint8_t& VX) -> void;
-    auto OP_EXA1(const std::uint8_t& VX) -> void;
-    auto OP_FX07(std::uint8_t& VX) const -> void;
-    auto OP_FX15(const std::uint8_t& VX) -> void;
-    auto OP_FX18(const std::uint8_t& VX) -> void;
-    auto OP_FX1E(const std::uint8_t& VX) -> void;
-    static auto OP_FX0A(std::uint8_t& VX) -> void;
-    auto OP_FX29() -> void;
+    auto OP_EX9E(Nibbles nibbles) -> void;
+    auto OP_EXA1(Nibbles nibbles) -> void;
+    auto OP_FX07(Nibbles nibbles) -> void;
+    auto OP_FX15(Nibbles nibbles) -> void;
+    auto OP_FX18(Nibbles nibbles) -> void;
+    auto OP_FX1E(Nibbles nibbles) -> void;
+    auto OP_FX0A(Nibbles nibbles) -> void;
+    auto OP_FX29(Nibbles nibbles) -> void;
     auto OP_FX33(Nibbles nibbles) -> void;
     auto OP_FX55(Nibbles nibbles) -> void;
     auto OP_FX65(Nibbles nibbles) -> void;
@@ -155,7 +157,7 @@ private:
 
     std::array<std::uint8_t, 4096> m_memory{};
 
-    std::array<bool, 2048> m_display{}; //64x32 Pixels
+    std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display{};
 };
 
 #endif //MAIN_H
