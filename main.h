@@ -59,13 +59,18 @@ public:
         std::uint8_t fourth_nibble) -> Instruction;
 
     auto execute(Instruction instruction, Nibbles nibbles) -> void;
+
+    auto instruction_CXNN(std::uint8_t second_nibble, std::uint8_t third_nibble, std::uint8_t fourth_nibble) -> void;
+    auto instruction_DXYN(std::uint8_t second_nibble, std::uint8_t third_nibble, std::uint8_t fourth_nibble) -> void;
+    auto instruction_FX33(std::uint8_t second_nibble) -> void;
+    auto instruction_FX55(std::uint8_t second_nibble) -> void;
+    auto instruction_FX65(std::uint8_t second_nibble) -> void;
+
     [[nodiscard]] static auto get_nibbles(std::uint16_t instruction) -> Nibbles;
 
     static auto Chip8::get_number_NN(std::uint8_t third_nibble, std::uint8_t fourth_nibble) -> std::uint16_t;
     static auto Chip8::get_number_NNN(std::uint8_t second_nibble, std::uint8_t third_nibble,
                                std::uint8_t fourth_nibble) -> std::uint16_t;
-
-    auto clear_screen() -> void;
 
 private:
     std::array<std::uint8_t, 16> m_registers{};

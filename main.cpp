@@ -1,10 +1,9 @@
 #include <iostream>
 #include <print>
 #include <fstream>
+#include <random>
 
 #include "main.h"
-
-#include <random>
 
 
 Chip8::Chip8()
@@ -86,7 +85,7 @@ auto Chip8::fetch() const -> std::uint16_t
 
 auto Chip8::decode(const std::uint16_t opcode, const Nibbles nibbles) -> Instruction
 {
-    auto& [first_nibble, second_nibble,
+    auto [first_nibble, second_nibble,
         third_nibble, fourth_nibble] = nibbles;
 
     switch (first_nibble)
@@ -221,39 +220,39 @@ auto Chip8::get_instruction_FXXX(const std::uint8_t third_nibble, const std::uin
 {
     if (third_nibble == 0x0 and fourth_nibble == 0x7)
     {
-        return Instruction::I_8XY0;
+        return Instruction::I_FX07;
     }
     if (third_nibble == 0x1 and fourth_nibble == 0x5)
     {
-        return Instruction::I_8XY1;
+        return Instruction::I_FX15;
     }
     if (third_nibble == 0x1 and fourth_nibble == 0x8)
     {
-        return Instruction::I_8XY2;
+        return Instruction::I_FX18;
     }
     if (third_nibble == 0x1 and fourth_nibble == 0xE)
     {
-        return Instruction::I_8XY3;
+        return Instruction::I_FX1E;
     }
     if (third_nibble == 0x0 and fourth_nibble == 0xA)
     {
-        return Instruction::I_8XY0;
+        return Instruction::I_FX0A;
     }
     if (third_nibble == 0x2 and fourth_nibble == 0x9)
     {
-        return Instruction::I_8XY1;
+        return Instruction::I_FX29;
     }
     if (third_nibble == 0x3 and fourth_nibble == 0x3)
     {
-        return Instruction::I_8XY2;
+        return Instruction::I_FX33;
     }
     if (third_nibble == 0x5 and fourth_nibble == 0x5)
     {
-        return Instruction::I_8XY3;
+        return Instruction::I_FX55;
     }
     if (third_nibble == 0x6 and fourth_nibble == 0x5)
     {
-        return Instruction::I_8XY3;
+        return Instruction::I_FX65;
     }
 
     return Instruction::UNINITIALIZED;
@@ -267,7 +266,7 @@ auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> voi
     switch (instruction)
     {
     case Instruction::I_00E0:
-        clear_screen();
+        m_display.fill(0);
         break;
     case Instruction::I_00EE:
         m_program_counter = m_stack.top();
@@ -363,81 +362,53 @@ auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> voi
         break;
 
     case Instruction::I_CXNN:
-        {
-            std::random_device dev;
-            std::mt19937 rng(dev());
-            std::uniform_int_distribution<std::mt19937::result_type> dist(0,255);
-
-            m_registers.at(second_nibble) = dist(rng) & get_number_NN(third_nibble, fourth_nibble);
-        }
+        instruction_CXNN(second_nibble, third_nibble, fourth_nibble);
         break;
 
     case Instruction::I_DXYN:
-        {
-            auto X = m_registers.at(second_nibble) % 64;
-            auto Y = m_registers.at(third_nibble) % 32;
-
-            auto& VF = m_registers.at(15);
-            VF = 0; // set VF 0 -> pixel turned off?
-
-            const auto pixel_bits = m_memory.at(m_index_register + fourth_nibble);
-
-            std::uint8_t check_bits = 0x80;
-            while (true)
-            {
-                if ( check_bits & pixel_bits)
-                {
-                    if (m_display.at(X * Y) == 1)
-                    {
-                        m_display.at(X * Y) = 0;
-                        VF = 1;
-                    }
-                    else
-                    {
-                        m_display.at(X * Y) = 1;
-                    }
-
-                }
-                if (check_bits == 1)
-                {
-                    break;
-                }
-
-                check_bits = check_bits >> 1;
-
-                X += 1;
-                Y += 1;
-
-                if (X % 64 == 0 or Y % 32 == 0)
-                {
-                    break;
-                }
-            }
-        }
+        instruction_DXYN(second_nibble, third_nibble, fourth_nibble);
         break;
 
-    case Instruction::I_EX9E:
+    case Instruction::I_EX9E: // Implement async user input?
         break;
-    case Instruction::I_EXA1:
+
+    case Instruction::I_EXA1: // Implement async user input?
         break;
+
     case Instruction::I_FX07:
+        m_registers.at(second_nibble) = m_delay_timer;
         break;
+
     case Instruction::I_FX15:
+        m_delay_timer = m_registers.at(second_nibble);
         break;
+
     case Instruction::I_FX18:
+        m_sound_timer = m_registers.at(second_nibble);
         break;
+
     case Instruction::I_FX1E:
+        m_index_register += m_registers.at(second_nibble);
         break;
-    case Instruction::I_FX0A:
+
+    case Instruction::I_FX0A: // Implement async user input?
         break;
-    case Instruction::I_FX29:
+
+    case Instruction::I_FX29: // Research instruction
         break;
+
     case Instruction::I_FX33:
+        instruction_FX33(second_nibble);
         break;
+
     case Instruction::I_FX55:
+        instruction_FX55(second_nibble);
         break;
-    case Instruction::I_FX65:
+
+    case Instruction::I_FX65: // TODO: check if implemented correctly
+        instruction_FX65(second_nibble);
         break;
+
     case Instruction::UNINITIALIZED:
         [[fallthrough]]
     default:
@@ -445,6 +416,117 @@ auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> voi
         break;
     }
 }
+
+auto Chip8::instruction_CXNN(const std::uint8_t second_nibble, const std::uint8_t third_nibble,
+                             const std::uint8_t fourth_nibble) -> void
+{
+    std::random_device dev;
+    std::mt19937 rng(dev());
+    std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
+
+    m_registers.at(second_nibble) = dist(rng) & get_number_NN(third_nibble, fourth_nibble);
+}
+
+auto Chip8::instruction_DXYN(const std::uint8_t second_nibble, const std::uint8_t third_nibble,
+                             const std::uint8_t fourth_nibble) -> void
+{
+    auto X = m_registers.at(second_nibble) % 64;
+    auto Y = m_registers.at(third_nibble) % 32;
+
+    auto& VF = m_registers.at(15);
+    VF = 0; // set VF 0 -> pixel turned off?
+
+    const auto pixel_bits = m_memory.at(m_index_register + fourth_nibble);
+
+    std::uint8_t check_bits = 0x80;
+    while (true)
+    {
+        if (check_bits & pixel_bits)
+        {
+            if (m_display.at(X * Y) == 1)
+            {
+                m_display.at(X * Y) = 0;
+                VF = 1;
+            }
+            else
+            {
+                m_display.at(X * Y) = 1;
+            }
+        }
+        if (check_bits == 1)
+        {
+            break;
+        }
+
+        check_bits = check_bits >> 1;
+
+        X += 1;
+        Y += 1;
+
+        if (X % 64 == 0 or Y % 32 == 0)
+        {
+            break;
+        }
+    }
+}
+
+
+auto Chip8::instruction_FX33(const std::uint8_t second_nibble) -> void
+{
+    auto number = m_registers.at(second_nibble);
+    auto I = m_index_register;
+
+    if (number > 100)
+    {
+        m_memory.at(I) = number / 100;
+        number %= 100;
+        I += 1;
+    }
+    if (number > 10)
+    {
+        m_memory.at(I) = number / 10;
+        number %= 10;
+        I += 1;
+    }
+
+    m_memory.at(I) = number;
+}
+
+
+auto Chip8::instruction_FX55(const std::uint8_t second_nibble) -> void
+{
+    auto I = m_index_register;
+    if (second_nibble != 0)
+    {
+        for (int index = 0; index < second_nibble; index++)
+        {
+            m_memory.at(I) = m_registers.at(index);
+            I++;
+        }
+    }
+    else
+    {
+        m_memory.at(I) = m_registers.at(0);
+    }
+}
+
+auto Chip8::instruction_FX65(const std::uint8_t second_nibble) -> void
+{
+    auto I = m_index_register;
+    if (second_nibble != 0)
+    {
+        for (int index = 0; index < second_nibble; index++)
+        {
+            m_registers.at(I) = m_memory.at(index);
+            I++;
+        }
+    }
+    else
+    {
+        m_registers.at(0) = m_memory.at(I);
+    }
+}
+
 
 auto Chip8::get_nibbles(std::uint16_t instruction) -> Nibbles
 {
@@ -464,17 +546,9 @@ auto Chip8::get_number_NN(const std::uint8_t third_nibble, const std::uint8_t fo
 }
 
 auto Chip8::get_number_NNN(const std::uint8_t second_nibble, const std::uint8_t third_nibble,
-    const std::uint8_t fourth_nibble) -> std::uint16_t
+                           const std::uint8_t fourth_nibble) -> std::uint16_t
 {
     return second_nibble << 8 | third_nibble << 4 | fourth_nibble << 0;
-}
-
-auto Chip8::clear_screen() -> void
-{
-    for (auto& pixel : m_display)
-    {
-        pixel = 0;
-    }
 }
 
 auto main(int argc, char** argv) -> int
