@@ -14,23 +14,25 @@ class Chip8
 public:
     enum class Instruction
     {
-        I_00E0, I_00EE,
-        I_1NNN,
-        I_2NNN,
-        I_3XNN,
-        I_4XNN,
-        I_5XY0,
-        I_6XNN,
-        I_7XNN,
-        I_8XY0, I_8XY1, I_8XY2, I_8XY3, I_8XY4, I_8XY5, I_8XY7, I_8XY6, I_8XYE,
-        I_9XY0,
-        I_ANNN,
-        I_BNNN,
-        I_CXNN,
-        I_DXYN,
-        I_EX9E, I_EXA1,
-        I_FX07, I_FX15, I_FX18, I_FX1E, I_FX0A, I_FX29, I_FX33, I_FX55, I_FX65,
-        UNINITIALIZED,
+        I_00E0 = 0, I_00EE = 1,
+        I_1NNN = 2,
+        I_2NNN = 3,
+        I_3XNN = 4,
+        I_4XNN = 5,
+        I_5XY0 = 6,
+        I_6XNN = 7,
+        I_7XNN = 8,
+        I_8XY0 = 9, I_8XY1 = 10, I_8XY2 = 11, I_8XY3 = 12, I_8XY4 = 13,
+        I_8XY5 = 14, I_8XY7 = 15, I_8XY6 = 16, I_8XYE = 17,
+        I_9XY0 = 18,
+        I_ANNN = 19,
+        I_BNNN = 20,
+        I_CXNN = 21,
+        I_DXYN = 22,
+        I_EX9E = 23, I_EXA1 = 24,
+        I_FX07 = 25, I_FX15 = 26, I_FX18 = 27, I_FX1E = 28, I_FX0A = 29,
+        I_FX29 = 30, I_FX33 = 31, I_FX55 = 32, I_FX65 = 33,
+        UNINITIALIZED = 34,
     };
 
     enum class Keymap
@@ -64,12 +66,12 @@ public:
 
     static inline const std::unordered_map<int, Keymap> CHAR_TO_KEYMAP{
             {49, Keymap::K_1}, {50, Keymap::K_2}, {51, Keymap::K_3}, {52, Keymap::K_4},
-            {81, Keymap::K_Q}, {87, Keymap::K_W}, {69, Keymap::K_E}, {82, Keymap::K_R},
-            {65, Keymap::K_A}, {83, Keymap::K_S}, {68, Keymap::K_D}, {70, Keymap::K_F},
-            {89, Keymap::K_Y}, {88, Keymap::K_X}, {67, Keymap::K_C}, {86, Keymap::K_V},
+            {113, Keymap::K_Q}, {119, Keymap::K_W}, {101, Keymap::K_E}, {114, Keymap::K_R},
+            {97, Keymap::K_A}, {115, Keymap::K_S}, {100, Keymap::K_D}, {102, Keymap::K_F},
+            {121, Keymap::K_Y}, {120, Keymap::K_X}, {99, Keymap::K_C}, {118, Keymap::K_V},
         };
 
-    static constexpr std::array<uint8_t, 80> FONT{
+    static constexpr std::array<uint8_t, 80> FONTS{
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
         0x20, 0x60, 0x20, 0x20, 0x70, // 1
         0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
@@ -108,7 +110,7 @@ public:
     auto OP_1NNN(Nibbles nibbles) -> void;
     auto OP_2NNN(Nibbles nibbles) -> void;
     auto OP_3XNN(Nibbles nibbles) -> void;
-    auto OP_4XN(Nibbles nibbles) -> void;
+    auto OP_4XNN(Nibbles nibbles) -> void;
     auto OP_5XY0(Nibbles nibbles) -> void;
     auto OP_9XY0(Nibbles nibbles) -> void;
     auto OP_6XNN(Nibbles nibbles) -> void;
