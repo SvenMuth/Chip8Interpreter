@@ -14,7 +14,8 @@ extern "C"{
 #include <termios.h>
 #include <fcntl.h>
 
-    void enable_raw_mode_input() {
+    void enable_raw_mode_input()
+    {
         struct termios term;
         tcgetattr(STDIN_FILENO, &term);
         term.c_lflag &= ~(ICANON | ECHO);
@@ -28,7 +29,7 @@ Chip8::Chip8()
     m_program_counter = START_ADDRESS;
 
     //Write font to memory from 0x50 to 0x9F
-    for (int i{FONTSET_START_ADDRESS}; const auto& f : FONTS)
+    for (int i{FONTSET_START_ADDRESS}; const auto& f: FONTS)
     {
         m_memory.at(i) = f;
         i++;
@@ -70,7 +71,7 @@ auto Chip8::main_loop() -> void
 
         const auto nibbles = get_nibbles(opcode);
         const auto instruction = decode(nibbles);
-        std::println("{}", static_cast<int>(instruction));
+        //std::println("{}", static_cast<int>(instruction));
 
         execute(instruction, nibbles);
 
@@ -409,7 +410,7 @@ auto Chip8::OP_ANNN(const Nibbles nibbles) -> void
 auto Chip8::OP_BNNN(const Nibbles nibbles) -> void
 {
     //TODO: Implement further options later
-    m_program_counter = get_number_NNN(nibbles) + m_registers.at(0);
+    m_program_counter = m_registers.at(0x0) + get_number_NNN(nibbles);
 }
 
 auto Chip8::OP_CXNN(const Nibbles nibbles) -> void
@@ -434,17 +435,22 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
     const auto X = VX % DISPLAY_WIDTH;
     const auto Y = VY % DISPLAY_HEIGHT;
 
-    auto& VF = m_registers.at(15);
+    auto& VF = m_registers.at(0xF);
     VF = 0;
 
-    for (int row{0}; row < fourth_nibble; row++)
+    for (unsigned int row{0}; row < fourth_nibble; row++)
     {
         const uint8_t sprite_byte = m_memory.at(m_index_register + row);
         for (unsigned int col = 0; col < 8; col++)
         {
             const uint8_t sprite_pixel = sprite_byte & (0x80 >> col);
-            bool& screen_pixel = m_display.at((Y + row) * DISPLAY_WIDTH + (X + col));
+            const auto index = (Y + row) * DISPLAY_WIDTH + (X + col);
+            if (index >= DISPLAY_WIDTH * DISPLAY_HEIGHT)
+            {
+                return;
+            }
 
+            bool& screen_pixel = m_display.at(index);
             if (sprite_pixel)
             {
                 if (screen_pixel)
@@ -481,6 +487,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
     }
 
     constexpr auto keymap_str = R"(
+                                KEYMAP
                                 1 2 3 4      1 2 3 C
                                 Q W E R  =>  4 5 6 D
                                 A S D F      7 8 9 E
@@ -568,45 +575,33 @@ auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 auto Chip8::OP_FX29(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    m_index_register = FONTSET_START_ADDRESS + (5 * VX);
+    m_index_register = FONTSET_START_ADDRESS + 5 * VX;
 }
 
 auto Chip8::OP_FX33(const Nibbles nibbles) -> void
 {
-    //have to be tested
-    const auto& VX = m_registers.at(nibbles.second_nibble);
+    auto number = m_registers.at(nibbles.second_nibble);;
+    const auto I = m_index_register;
 
-    auto number = VX;
-    auto I = m_index_register;
+    m_memory.at(I + 2) = number % 10;
+    number /= 10;
 
-    if (number > 100)
-    {
-        m_memory.at(I) = number / 100;
-        number %= 100;
-        I += 1;
-    }
-    if (number > 10)
-    {
-        m_memory.at(I) = number / 10;
-        number %= 10;
-        I += 1;
-    }
+    m_memory.at(I + 1) = number % 10;
+    number /= 10;
 
-    m_memory.at(I) = number;
+    m_memory.at(I) = number % 10;
 }
 
 auto Chip8::OP_FX55(const Nibbles nibbles) -> void
 {
-    auto I = m_index_register;
+    const auto I = m_index_register;
     const auto VX = nibbles.second_nibble;
 
-    //Is the if statement needed?
     if (VX != 0)
     {
-        for (unsigned int index = 0; index < VX; index++)
+        for (unsigned int index = 0; index <= VX; index++)
         {
             m_memory.at(I + index) = m_registers.at(index);
-            I++;
         }
     }
     else
@@ -617,17 +612,14 @@ auto Chip8::OP_FX55(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX65(const Nibbles nibbles) -> void
 {
-    //TODO: check if implemented correctly
-    auto I = m_index_register;
+    const auto I = m_index_register;
     const auto VX = nibbles.second_nibble;
 
-    //Is the if statement needed?
     if (VX != 0)
     {
-        for (unsigned int index = 0; index < VX; index++)
+        for (unsigned int index = 0; index <= VX; index++)
         {
             m_registers.at(index) = m_memory.at(I + index);
-            I++;
         }
     }
     else
@@ -641,7 +633,6 @@ auto Chip8::get_value_char_to_key_map(int key) -> std::uint8_t
     key = std::tolower(key);
     if (!CHAR_TO_KEYMAP.contains(key))
     {
-        //TODO: Implement
         return static_cast<int>(std::numeric_limits<uint8_t>::max());
     }
 

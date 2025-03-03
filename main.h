@@ -59,11 +59,6 @@ public:
         std::uint8_t fourth_nibble;
     };
 
-    static constexpr std::uint16_t START_ADDRESS{0x200};
-    static constexpr int FONTSET_START_ADDRESS{0x50};
-    static constexpr int DISPLAY_WIDTH{64};
-    static constexpr int DISPLAY_HEIGHT{32};
-
     static inline const std::unordered_map<int, Keymap> CHAR_TO_KEYMAP{
             {49, Keymap::K_1}, {50, Keymap::K_2}, {51, Keymap::K_3}, {52, Keymap::K_4},
             {113, Keymap::K_Q}, {119, Keymap::K_W}, {101, Keymap::K_E}, {114, Keymap::K_R},
@@ -89,6 +84,11 @@ public:
         0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
         0xF0, 0x80, 0xF0, 0x80, 0x80, // F
     };
+
+    static constexpr std::uint16_t START_ADDRESS{0x200};
+    static constexpr int FONTSET_START_ADDRESS{0x50};
+    static constexpr int DISPLAY_WIDTH{64};
+    static constexpr int DISPLAY_HEIGHT{32};
 
     Chip8();
 
@@ -146,20 +146,29 @@ public:
     [[nodiscard]]static auto get_number_NN(Nibbles nibbles) -> std::uint8_t;
     [[nodiscard]]static auto get_number_NNN(Nibbles nibbles) -> std::uint16_t;
 
-private:
+protected:
     std::array<std::uint8_t, 16> m_registers{};
     std::uint16_t m_index_register{};
     std::uint16_t m_program_counter{};
 
-    std::stack<std::uint16_t> m_stack{}; //16 elements or more, doesnt matter
-    std::uint8_t m_stack_ptr{};
+    std::stack<std::uint16_t> m_stack{};
+    //std::uint8_t m_stack_ptr{}; //unnecesary with this implementation
 
     std::uint8_t m_delay_timer{};
     std::uint8_t m_sound_timer{};
 
     std::array<std::uint8_t, 4096> m_memory{};
-
     std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display{};
+};
+
+class COSMAC_VIP: public Chip8
+{
+
+};
+
+class CHIP_48: public Chip8
+{
+
 };
 
 #endif //MAIN_H
