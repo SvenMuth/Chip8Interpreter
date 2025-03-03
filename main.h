@@ -93,7 +93,7 @@ public:
     Chip8();
 
     auto read_rom(const std::filesystem::path& file_path) -> void;
-    [[noreturn]] auto main_loop() -> void;
+    [[noreturn]]auto main_loop() -> void;
 
     [[nodiscard]] auto fetch() -> std::uint16_t;
     [[nodiscard]] static auto decode(Nibbles nibbles) -> Instruction;

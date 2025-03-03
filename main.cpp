@@ -3,23 +3,58 @@
 #include <fstream>
 #include <random>
 #include <thread>
+#include <threads.h>
 
 #include "main.h"
 
 using namespace std::chrono_literals;
 
+namespace
+{
+    int ch{0xFF};
+    struct timespec ts_init;
+    struct timespec ts_now;
+    mtx_t mtx;
+}
+
 
 extern "C"{
 #include <unistd.h>
 #include <termios.h>
-#include <fcntl.h>
+#include <sys/time.h>
+#include <sys/types.h>
 
+    struct termios new_term;
+    struct termios old_term;
     void enable_raw_mode_input()
     {
-        struct termios term;
-        tcgetattr(STDIN_FILENO, &term);
-        term.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &term);
+        tcgetattr(STDIN_FILENO, &old_term);
+        new_term = old_term;
+        new_term.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+    }
+
+    void disable_raw_mode_input()
+    {
+        tcsetattr(STDIN_FILENO,TCSANOW,&old_term);
+    }
+
+    [[noreturn]]void user_input()
+    {
+        enable_raw_mode_input();
+        int tmp{0};
+
+        while (true)
+        {
+            printf(" %d ", ch);
+            if (tmp = getchar(); tmp >= 0 && (ch == 0xFF || ch == EOF || ch != tmp))
+            {
+                timespec_get(&ts_init, TIME_UTC);
+                mtx_lock(&mtx);
+                ch = tmp;
+                mtx_unlock(&mtx);
+            }
+        }
     }
 }
 
@@ -65,13 +100,20 @@ auto Chip8::main_loop() -> void
 {
     while (true)
     {
-
         std::this_thread::sleep_for(5ms);
         const auto opcode = fetch();
 
         const auto nibbles = get_nibbles(opcode);
         const auto instruction = decode(nibbles);
-        //std::println("{}", static_cast<int>(instruction));
+
+        /*
+        std::println("{}", static_cast<int>(instruction));
+        std::println("PC: {}", m_program_counter);
+        if (nibbles.second_nibble <= 0xF)
+        {
+            std::println("VX: {}", m_registers.at(nibbles.second_nibble));
+        }
+        */
 
         execute(instruction, nibbles);
 
@@ -338,7 +380,7 @@ auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
     const auto& VY = m_registers.at(nibbles.third_nibble);
     const std::uint16_t sum = VX + VY;
 
-    if (sum > 255)
+    if (sum > 0xFF)
     {
         m_registers.at(0xF) = 1;
     }
@@ -463,71 +505,81 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
         }
     }
 
-    //Clear terminal
-    std::print("\033[H\033[J");
-    std::print("\n\n\t\t\t\t");
-    for (int counter{1}; const auto& pixel: m_display)
+    if (VF == 0)
     {
-        if (pixel)
+        //Clear terminal
+        std::print("\033[H\033[J");
+        std::print("\n\n\t\t\t\t");
+        for (int counter{1}; const auto& pixel: m_display)
         {
-            //White Large Square Unicode
-            std::print("\u2B1C");
-        }
-        else
-        {
-            //Black Large Square Unicode
-            std::print("\u2B1B");
+            if (pixel)
+            {
+                //White Large Square Unicode
+                std::print("\u2B1C");
+            }
+            else
+            {
+                //Black Large Square Unicode
+                std::print("\u2B1B");
+            }
+
+            if (counter % DISPLAY_WIDTH == 0)
+            {
+                std::print("\n\t\t\t\t");
+            }
+            counter++;
         }
 
-        if (counter % DISPLAY_WIDTH == 0)
-        {
-            std::print("\n\t\t\t\t");
-        }
-        counter++;
-    }
-
-    constexpr auto keymap_str = R"(
+        constexpr auto keymap_str = R"(
                                 KEYMAP
                                 1 2 3 4      1 2 3 C
                                 Q W E R  =>  4 5 6 D
                                 A S D F      7 8 9 E
                                 Y X C V      A 0 B F)";
-    std::println("{}", keymap_str);
+        std::println("{}", keymap_str);
+    }
 }
 
 auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 {
-    //have to be tested
     enable_raw_mode_input();
-
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto ch = std::getchar();
 
-    if (ch == EOF)
-    {
-        return;
-    }
-
+    mtx_lock(&mtx);
     const auto val = get_value_char_to_key_map(ch);
-    if (VX == val && val <= 0xF)
+
+    if (VX == val and val <= 0xF)
     {
         m_program_counter += 2;
     }
+
+    timespec_get(&ts_now, TIME_UTC);
+    if (ts_now.tv_sec - ts_init.tv_sec > 1)
+    {
+        ch = 0xFF;
+    }
+    mtx_unlock(&mtx);
 }
 
 auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 {
-    //have to be tested
     enable_raw_mode_input();
     auto& VX = m_registers.at(nibbles.second_nibble);
 
-    const auto ch = std::getchar();
+    mtx_lock(&mtx);
     const auto val = get_value_char_to_key_map(ch);
 
-    if (VX != val && val <= 0xF)
+    if (VX != val or val > 0xF)
     {
         m_program_counter += 2;
     }
+
+    timespec_get(&ts_now, TIME_UTC);
+    if (ts_now.tv_sec - ts_init.tv_sec > 1)
+    {
+        ch = 0xFF;
+    }
+    mtx_unlock(&mtx);
 }
 
 auto Chip8::OP_FX07(const Nibbles nibbles) -> void
@@ -556,14 +608,11 @@ auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
-    enable_raw_mode_input();
-
+    disable_raw_mode_input();
     auto& VX = m_registers.at(nibbles.second_nibble);
+    const auto val = get_value_char_to_key_map(std::getchar());
 
-    const auto ch = std::getchar();
-    const auto val = get_value_char_to_key_map(ch);
-
-    if (val > 0xF or ch == EOF)
+    if (val > 0xF)
     {
         m_program_counter -= 2;
         return;
@@ -672,7 +721,10 @@ auto main(int argc, char** argv) -> int
 {
     try
     {
+        mtx_init(&mtx, mtx_plain);
+
         Chip8 chip8;
+        std::jthread get_async_user_input(user_input);
 
         std::filesystem::path file_path{};
         if (argc == 2)
