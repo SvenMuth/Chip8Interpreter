@@ -711,14 +711,8 @@ auto Chip8::user_input_thread() -> void
     }
 }
 
-auto Chip8::get_value_char_to_key_map(int key) -> std::uint8_t
+auto Chip8::get_value_char_to_key_map(const int key) -> std::uint8_t
 {
-    key = std::tolower(key);
-    if (!CHAR_TO_KEYMAP.contains(key))
-    {
-        return static_cast<int>(std::numeric_limits<uint8_t>::max());
-    }
-
     auto c = CHAR_TO_KEYMAP.at(key);
     return static_cast<std::uint8_t>(c);
 }
@@ -770,7 +764,7 @@ auto main(int argc, char** argv) -> int
             const auto number = std::stof(argv[1]);
             if (number < 0)
             {
-                throw std::runtime_error("Clock speed must a positive number!");
+                throw std::runtime_error("Clock speed must be a positive number!");
             }
             clock_speed_hz = number;
             file_path = argv[2];
