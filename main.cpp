@@ -541,17 +541,16 @@ auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    disable_raw_mode_input();
-    const auto val = get_value_char_to_key_map(std::getchar());
-    enable_raw_mode_input();
 
-    if (val > 0xF)
+    for (int val{0}; val < m_keymap.size(); val++)
     {
-        m_program_counter -= 2;
-        return;
+        if (m_keymap.at(val).is_pressed)
+        {
+            VX = val;
+            return;
+        }
     }
-
-    VX = val;
+    m_program_counter -= 2;
 }
 
 auto Chip8::OP_FX29(const Nibbles nibbles) -> void
@@ -664,11 +663,11 @@ auto Chip8::user_input_thread() -> void
     while (true)
     {
         std::this_thread::sleep_for(5ms); //Reduce cpu utilization, maybe try some async methods soon
-
         for (auto& [is_pressed, start_time]: m_keymap)
         {
             if (is_pressed)
             {
+
                 auto end_time = std::chrono::high_resolution_clock::now();
                 time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
             }
@@ -677,7 +676,7 @@ auto Chip8::user_input_thread() -> void
                 continue;
             }
 
-            if (time_diff > 180) //Let key pressed for 180ms
+            if (time_diff > 150) //Let key pressed for specific amount of ms
             {
                 is_pressed = false;
             }
