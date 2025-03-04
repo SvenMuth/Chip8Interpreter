@@ -1,5 +1,5 @@
-# Chip 8 Interpreter in C++
-A Chip 8 Interpreter running in the terminal. Works only on Linux!
+# Chip8 Interpreter in C++
+A Chip8 Interpreter running in the terminal. Works only on Linux!
 Works best in the standard terminal. In an IDE some function may not work.
 
 ## Usage
