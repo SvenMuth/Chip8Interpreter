@@ -94,6 +94,7 @@ public:
 
     auto read_rom(const std::filesystem::path& file_path) -> void;
     [[noreturn]]auto main_loop() -> void;
+    auto update_timer() -> void;
 
     [[nodiscard]] auto fetch() -> std::uint16_t;
     [[nodiscard]] static auto decode(Nibbles nibbles) -> Instruction;
@@ -140,8 +141,10 @@ public:
     auto OP_FX55(Nibbles nibbles) -> void;
     auto OP_FX65(Nibbles nibbles) -> void;
 
-    [[nodiscard]] static auto get_value_char_to_key_map(int key) -> std::uint8_t;
-    [[nodiscard]] static auto get_nibbles(std::uint16_t instruction) -> Nibbles;
+    auto user_input_thread() -> void;
+
+    [[nodiscard]]static auto get_value_char_to_key_map(int key) -> std::uint8_t;
+    [[nodiscard]]static auto get_nibbles(std::uint16_t instruction) -> Nibbles;
 
     [[nodiscard]]static auto get_number_NN(Nibbles nibbles) -> std::uint8_t;
     [[nodiscard]]static auto get_number_NNN(Nibbles nibbles) -> std::uint16_t;
@@ -156,6 +159,8 @@ protected:
 
     std::uint8_t m_delay_timer{};
     std::uint8_t m_sound_timer{};
+
+    std::array<bool, 16> m_keymap{};
 
     std::array<std::uint8_t, 4096> m_memory{};
     std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display{};

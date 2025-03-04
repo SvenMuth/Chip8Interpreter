@@ -4,60 +4,13 @@
 #include <random>
 #include <thread>
 #include <threads.h>
+#include <ncursesw/ncurses.h>
 
 #include "main.h"
 
 using namespace std::chrono_literals;
 
-namespace
-{
-    int ch{0xFF};
-    struct timespec ts_init;
-    struct timespec ts_now;
-    mtx_t mtx;
-}
-
-
-extern "C"{
-#include <unistd.h>
-#include <termios.h>
-#include <sys/time.h>
-#include <sys/types.h>
-
-    struct termios new_term;
-    struct termios old_term;
-    void enable_raw_mode_input()
-    {
-        tcgetattr(STDIN_FILENO, &old_term);
-        new_term = old_term;
-        new_term.c_lflag &= ~(ICANON | ECHO);
-        tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
-    }
-
-    void disable_raw_mode_input()
-    {
-        tcsetattr(STDIN_FILENO,TCSANOW,&old_term);
-    }
-
-    [[noreturn]]void user_input()
-    {
-        enable_raw_mode_input();
-        int tmp{0};
-
-        while (true)
-        {
-            printf(" %d ", ch);
-            if (tmp = getchar(); tmp >= 0 && (ch == 0xFF || ch == EOF || ch != tmp))
-            {
-                timespec_get(&ts_init, TIME_UTC);
-                mtx_lock(&mtx);
-                ch = tmp;
-                mtx_unlock(&mtx);
-            }
-        }
-    }
-}
-
+WINDOW* win;
 
 Chip8::Chip8()
 {
@@ -98,37 +51,53 @@ auto Chip8::read_rom(const std::filesystem::path& file_path) -> void
 
 auto Chip8::main_loop() -> void
 {
+    /*
+std::println("{}", static_cast<int>(instruction));
+std::println("PC: {}", m_program_counter);
+if (nibbles.second_nibble <= 0xF)
+{
+    std::println("VX: {}", m_registers.at(nibbles.second_nibble));
+}
+*/
+    std::jthread user_input(&Chip8::user_input_thread, this);
+
+    auto begin_time = std::chrono::high_resolution_clock::now();
+    auto end_time = std::chrono::high_resolution_clock::now();
+
     while (true)
     {
-        std::this_thread::sleep_for(5ms);
-        const auto opcode = fetch();
+        const auto time_diff =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
 
-        const auto nibbles = get_nibbles(opcode);
-        const auto instruction = decode(nibbles);
-
-        /*
-        std::println("{}", static_cast<int>(instruction));
-        std::println("PC: {}", m_program_counter);
-        if (nibbles.second_nibble <= 0xF)
+        if (time_diff > 5) //Clock
         {
-            std::println("VX: {}", m_registers.at(nibbles.second_nibble));
-        }
-        */
+            begin_time = std::chrono::high_resolution_clock::now();
 
-        execute(instruction, nibbles);
+            const auto opcode = fetch();
 
-        if (m_delay_timer > 0)
-        {
-            m_delay_timer--;
+            const auto nibbles = get_nibbles(opcode);
+            const auto instruction = decode(nibbles);
+
+            execute(instruction, nibbles);
+            update_timer();
         }
 
-        if (m_sound_timer > 0)
-        {
-            m_sound_timer--;
-        }
+        end_time = std::chrono::high_resolution_clock::now();
     }
 }
 
+auto Chip8::update_timer() -> void
+{
+    if (m_delay_timer > 0)
+    {
+        m_delay_timer--;
+    }
+
+    if (m_sound_timer > 0)
+    {
+        m_sound_timer--;
+    }
+}
 
 auto Chip8::fetch() -> std::uint16_t
 {
@@ -507,79 +476,68 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 
     if (VF == 0)
     {
-        //Clear terminal
-        std::print("\033[H\033[J");
-        std::print("\n\n\t\t\t\t");
+        refresh();
+        clear();
+
+        printw("\n\n\t\t\t\t");
+        /*
         for (int counter{1}; const auto& pixel: m_display)
         {
             if (pixel)
             {
                 //White Large Square Unicode
-                std::print("\u2B1C");
+                //printw("\u2B1C");
+                printw("#");
             }
             else
             {
                 //Black Large Square Unicode
-                std::print("\u2B1B");
+                //printw("\u2B1B");
+                printw(" ");
             }
 
             if (counter % DISPLAY_WIDTH == 0)
             {
-                std::print("\n\t\t\t\t");
+                printw("\n\t\t\t\t");
             }
             counter++;
         }
+        */
 
-        constexpr auto keymap_str = R"(
-                                KEYMAP
-                                1 2 3 4      1 2 3 C
-                                Q W E R  =>  4 5 6 D
-                                A S D F      7 8 9 E
-                                Y X C V      A 0 B F)";
-        std::println("{}", keymap_str);
+        for (int x = 0; x < DISPLAY_WIDTH; x++) {
+            for (int y = 0; y < DISPLAY_HEIGHT; y++) {
+                mvwaddch(win, y + 1, x + 1, m_display.at(x*y) == true ? ACS_BLOCK : "\u2B1B");
+            }
+        }
+
+        box(win, 0, 0);
+        wrefresh(win);
+
+        const std::string keymap_str = "\n\t\t\t\tKEYMAP\n"
+                                    "\t\t\t\t1 2 3 4      1 2 3 C\n"
+                                    "\t\t\t\tQ W E R  =>  4 5 6 D\n"
+                                    "\t\t\t\tA S D F      7 8 9 E\n"
+                                    "\t\t\t\tY X C V      A 0 B F\n";
+        printw(keymap_str.c_str());
     }
 }
 
 auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 {
-    enable_raw_mode_input();
     auto& VX = m_registers.at(nibbles.second_nibble);
-
-    mtx_lock(&mtx);
-    const auto val = get_value_char_to_key_map(ch);
-
-    if (VX == val and val <= 0xF)
+    if (m_keymap.at(VX))
     {
         m_program_counter += 2;
     }
-
-    timespec_get(&ts_now, TIME_UTC);
-    if (ts_now.tv_sec - ts_init.tv_sec > 1)
-    {
-        ch = 0xFF;
-    }
-    mtx_unlock(&mtx);
 }
 
 auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 {
-    enable_raw_mode_input();
     auto& VX = m_registers.at(nibbles.second_nibble);
-
-    mtx_lock(&mtx);
-    const auto val = get_value_char_to_key_map(ch);
-
-    if (VX != val or val > 0xF)
+    if (!m_keymap.at(VX))
     {
         m_program_counter += 2;
     }
-
-    timespec_get(&ts_now, TIME_UTC);
-    if (ts_now.tv_sec - ts_init.tv_sec > 1)
-    {
-        ch = 0xFF;
-    }
-    mtx_unlock(&mtx);
 }
 
 auto Chip8::OP_FX07(const Nibbles nibbles) -> void
@@ -608,9 +566,8 @@ auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
-    disable_raw_mode_input();
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto val = get_value_char_to_key_map(std::getchar());
+    const auto val = get_value_char_to_key_map(getch());
 
     if (val > 0xF)
     {
@@ -677,6 +634,44 @@ auto Chip8::OP_FX65(const Nibbles nibbles) -> void
     }
 }
 
+auto Chip8::user_input_thread() -> void
+{
+    auto begin_time = std::chrono::high_resolution_clock::now();
+    auto end_time = std::chrono::high_resolution_clock::now();
+
+    int c;
+    while (true)
+    {
+        for (auto& key: m_keymap)
+        {
+            end_time = std::chrono::high_resolution_clock::now();
+            const auto time_diff =
+                std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
+
+            if (key and time_diff >= 170)
+            {
+                key = false;
+                begin_time = std::chrono::high_resolution_clock::now();
+                end_time = std::chrono::high_resolution_clock::now();
+            }
+        }
+
+        while ((c = getch()) != ERR)
+        {
+            if (!CHAR_TO_KEYMAP.contains(c))
+            {
+                continue;
+            }
+
+            const auto key_pos = static_cast<int>(CHAR_TO_KEYMAP.at(c));
+            m_keymap.at(key_pos) = true;
+
+            begin_time = std::chrono::high_resolution_clock::now();
+            end_time = std::chrono::high_resolution_clock::now();
+        }
+    }
+}
+
 auto Chip8::get_value_char_to_key_map(int key) -> std::uint8_t
 {
     key = std::tolower(key);
@@ -721,10 +716,14 @@ auto main(int argc, char** argv) -> int
 {
     try
     {
-        mtx_init(&mtx, mtx_plain);
+        setlocale(LC_ALL, "");
+        win = initscr();
+        cbreak();
+        noecho();
+        nodelay(stdscr, TRUE);
+        keypad(stdscr, TRUE);
 
         Chip8 chip8;
-        std::jthread get_async_user_input(user_input);
 
         std::filesystem::path file_path{};
         if (argc == 2)
@@ -738,6 +737,7 @@ auto main(int argc, char** argv) -> int
 
         chip8.read_rom(file_path);
         chip8.main_loop();
+        endwin();
     }
     catch (const std::runtime_error& re)
     {
