@@ -99,7 +99,7 @@ public:
     Chip8();
 
     auto read_rom(const std::filesystem::path& file_path) -> void;
-    auto main_loop() -> void;
+    auto main_loop(int clock_speed_ms) -> void;
     auto update_timer() -> void;
 
     [[nodiscard]] auto fetch() -> std::uint16_t;
@@ -173,6 +173,7 @@ protected:
 
     std::array<std::uint8_t, 4096> m_memory{};
     std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display{};
+    std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display_one_frame_behind{};
 };
 
 class COSMAC_VIP: public Chip8

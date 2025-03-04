@@ -4,10 +4,10 @@
 #include <random>
 #include <thread>
 #include <threads.h>
+#include <algorithm>
+#include <utility>
 
 #include "main.h"
-
-using namespace std::chrono_literals;
 
 extern "C"{
 #include <unistd.h>
@@ -32,6 +32,8 @@ extern "C"{
         tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
     }
 }
+
+using namespace std::chrono_literals;
 
 
 Chip8::Chip8()
@@ -71,7 +73,7 @@ auto Chip8::read_rom(const std::filesystem::path& file_path) -> void
     rom.close();
 }
 
-auto Chip8::main_loop() -> void
+auto Chip8::main_loop(const int clock_speed_ms) -> void
 {
     std::jthread user_input(&Chip8::user_input_thread, this);
 
@@ -83,7 +85,7 @@ auto Chip8::main_loop() -> void
         const auto time_diff =
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
 
-        if (time_diff > 2) //Clock
+        if (time_diff > clock_speed_ms) //Clock
         {
             begin_time = std::chrono::high_resolution_clock::now();
 
@@ -254,6 +256,7 @@ auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> voi
 auto Chip8::OP_00E0() -> void
 {
     m_display.fill(false);
+    m_display_one_frame_behind.fill(false);
 }
 
 auto Chip8::OP_00EE() -> void
@@ -468,7 +471,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
         const uint8_t sprite_byte = m_memory.at(m_index_register + row);
         for (unsigned int col = 0; col < 8; col++)
         {
-            const uint8_t sprite_pixel = sprite_byte & (0x80 >> col);
+            const uint8_t sprite_pixel = sprite_byte & 0x80 >> col;
             const auto index = (Y + row) * DISPLAY_WIDTH + (X + col);
             if (index >= DISPLAY_WIDTH * DISPLAY_HEIGHT)
             {
@@ -490,7 +493,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 
     if (VF == 0)
     {
-       draw_display();
+        draw_display();
     }
 }
 
@@ -539,7 +542,9 @@ auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
+    disable_raw_mode_input();
     const auto val = get_value_char_to_key_map(std::getchar());
+    enable_raw_mode_input();
 
     if (val > 0xF)
     {
@@ -608,58 +613,47 @@ auto Chip8::OP_FX65(const Nibbles nibbles) -> void
 
 auto Chip8::draw_display() const -> void
 {
+    std::stringstream ss;
     //Clear terminal
-    std::print("\033[H\033[J");
-    std::print("\n\t\t\t\t ");
+    ss << "\033[H\033[J";
+    ss << "\n\t";
 
-    for (int i = 0; i < 64; i++)
-    {
-        std::putchar('_');
-    }
-    std::putchar('\n');
-
-    std::print("\t\t\t\t|");
     for (int counter{1}; const auto& pixel: m_display)
     {
         if (pixel)
         {
             //White Large Square Unicode
-            //std::print("\u2B1C");
-            std::putchar('#');
+            ss << "\u2B1C";
         }
         else
         {
             //Black Large Square Unicode
-            //std::print("\u2B1B");
-            std::putchar(' ');
+            ss << "\u2B1B";
         }
 
         if (counter % DISPLAY_WIDTH == 0)
         {
-            std::putchar('|');
             if (counter != DISPLAY_WIDTH * DISPLAY_HEIGHT)
             {
-                std::print("\n\t\t\t\t|");
+                ss << "\n\t";
             }
         }
         counter++;
     }
 
-    std::print("\n\t\t\t\t ");
-    for (int i = 0; i < 64; i++)
-    {
-        std::print("\u203E");
-    }
-    std::putchar('\n');
+    ss << '\n';
 
     constexpr auto keymap_str = R"(
-                                KEYMAP
-                                1 2 3 4      1 2 3 C
-                                Q W E R  =>  4 5 6 D
-                                A S D F      7 8 9 E
-                                Y X C V      A 0 B F)";
+        KEYMAP
+        1 2 3 4      1 2 3 C
+        Q W E R  =>  4 5 6 D
+        A S D F      7 8 9 E
+        Y X C V      A 0 B F)";
 
-    std::println("{}", keymap_str);
+    ss << keymap_str;
+    ss << "\n\n\tPress ESC to exit.\n";
+
+    std::println("{}", ss.str());
 }
 
 auto Chip8::user_input_thread() -> void
@@ -670,6 +664,8 @@ auto Chip8::user_input_thread() -> void
 
     while (true)
     {
+        std::this_thread::sleep_for(5ms); //Reduce cpu utilization, maybe try some async methods soon
+
         for (auto& [is_pressed, start_time]: m_keymap)
         {
             if (is_pressed)
@@ -679,10 +675,10 @@ auto Chip8::user_input_thread() -> void
             }
             else
             {
-                time_diff = 0;
+                continue;
             }
 
-            if (is_pressed and time_diff > 150)
+            if (time_diff > 180) //Let key pressed for 180ms
             {
                 is_pressed = false;
             }
@@ -691,7 +687,7 @@ auto Chip8::user_input_thread() -> void
         while ((c = std::getchar()) != EOF)
         {
             c = std::tolower(c);
-            if (c == 'q' or c == 99)
+            if (c == 27) //ESC
             {
                 m_run = false;
                 return;
@@ -760,21 +756,35 @@ auto main(int argc, char** argv) -> int
     try
     {
         enable_raw_mode_input();
-
         Chip8 chip8;
 
         std::filesystem::path file_path{};
+        float clock_speed_hz{60.0f};
+
         if (argc == 2)
         {
             file_path = argv[1];
         }
+        else if (argc == 3)
+        {
+            const auto number = std::stof(argv[1]);
+            if (number < 0)
+            {
+                throw std::runtime_error("Clock speed must a positive number!");
+            }
+            clock_speed_hz = number;
+            file_path = argv[2];
+        }
         else
         {
-            throw std::runtime_error("Missing ROM name as argument!");
+            throw std::runtime_error("The wrong number of arguments has been passed!\n"
+                                     "./Chip8Interpreter [clock speed in Hz] ROM");
         }
 
+        const int clock_speed_ms = static_cast<int>(1.0f / clock_speed_hz * 1000.0f);
+
         chip8.read_rom(file_path);
-        chip8.main_loop();
+        chip8.main_loop(clock_speed_ms);
     }
     catch (const std::runtime_error& re)
     {
