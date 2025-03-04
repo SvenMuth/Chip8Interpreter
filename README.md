@@ -1,9 +1,12 @@
 # Chip8 Interpreter in C++
-A Chip8 Interpreter running in the terminal. Works only on Linux!
-Works best in the standard terminal. In an IDE some function may not work.
+A Chip8 Interpreter running in terminal. Works only on Linux!
+In an IDE terminal not all features may work.
 
 ## Usage
-    ./Chip8Interpreter  [Clock speed in Hz] /path/to/rom
+    ./Chip8Interpreter  [Clock (Hz)] /path/to/rom
+
+Without specifying the clock it is set to 60Hz.
+Some ROMs need a much higher or lower clock speed.
 
 ## Building
     $ mkdir build

@@ -256,7 +256,6 @@ auto Chip8::execute(const Instruction instruction, const Nibbles nibbles) -> voi
 auto Chip8::OP_00E0() -> void
 {
     m_display.fill(false);
-    m_display_one_frame_behind.fill(false);
 }
 
 auto Chip8::OP_00EE() -> void
@@ -618,7 +617,7 @@ auto Chip8::draw_display() const -> void
     ss << "\033[H\033[J";
     ss << "\n\t";
 
-    for (int counter{1}; const auto& pixel: m_display)
+    for (int counter{1}; const auto pixel: m_display)
     {
         if (pixel)
         {

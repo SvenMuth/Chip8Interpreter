@@ -53,7 +53,7 @@ public:
 
     struct Keypress
     {
-        bool is_pressed{false};
+        std::atomic_bool is_pressed{false};
         std::chrono::time_point<std::chrono::system_clock> start_time;
     };
 
@@ -173,7 +173,6 @@ protected:
 
     std::array<std::uint8_t, 4096> m_memory{};
     std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display{};
-    std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display_one_frame_behind{};
 };
 
 class COSMAC_VIP: public Chip8
