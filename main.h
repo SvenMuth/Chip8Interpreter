@@ -51,6 +51,12 @@ public:
         K_Y = 0xA, K_X = 0x0, K_C = 0xB, K_V = 0xF,
     };
 
+    struct Keypress
+    {
+        bool is_pressed{false};
+        std::chrono::time_point<std::chrono::system_clock> start_time;
+    };
+
     struct Nibbles
     {
         std::uint8_t first_nibble;
@@ -93,7 +99,7 @@ public:
     Chip8();
 
     auto read_rom(const std::filesystem::path& file_path) -> void;
-    [[noreturn]]auto main_loop() -> void;
+    auto main_loop() -> void;
     auto update_timer() -> void;
 
     [[nodiscard]] auto fetch() -> std::uint16_t;
@@ -141,6 +147,7 @@ public:
     auto OP_FX55(Nibbles nibbles) -> void;
     auto OP_FX65(Nibbles nibbles) -> void;
 
+    auto draw_display() const -> void;
     auto user_input_thread() -> void;
 
     [[nodiscard]]static auto get_value_char_to_key_map(int key) -> std::uint8_t;
@@ -150,6 +157,8 @@ public:
     [[nodiscard]]static auto get_number_NNN(Nibbles nibbles) -> std::uint16_t;
 
 protected:
+    std::atomic_bool m_run = true;
+
     std::array<std::uint8_t, 16> m_registers{};
     std::uint16_t m_index_register{};
     std::uint16_t m_program_counter{};
@@ -160,7 +169,7 @@ protected:
     std::uint8_t m_delay_timer{};
     std::uint8_t m_sound_timer{};
 
-    std::array<bool, 16> m_keymap{};
+    std::array<Keypress, 16> m_keymap{};
 
     std::array<std::uint8_t, 4096> m_memory{};
     std::array<bool, DISPLAY_WIDTH * DISPLAY_HEIGHT> m_display{};

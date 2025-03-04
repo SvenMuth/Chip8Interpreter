@@ -4,13 +4,35 @@
 #include <random>
 #include <thread>
 #include <threads.h>
-#include <ncursesw/ncurses.h>
 
 #include "main.h"
 
 using namespace std::chrono_literals;
 
-WINDOW* win;
+extern "C"{
+#include <unistd.h>
+#include <termios.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <fcntl.h>
+
+    struct termios new_term;
+    struct termios old_term;
+    void enable_raw_mode_input()
+    {
+        fcntl(0, F_SETFL, O_NONBLOCK);
+        tcgetattr(STDIN_FILENO, &old_term);
+        new_term = old_term;
+        new_term.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
+    }
+
+    void disable_raw_mode_input()
+    {
+        tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
+    }
+}
+
 
 Chip8::Chip8()
 {
@@ -51,25 +73,17 @@ auto Chip8::read_rom(const std::filesystem::path& file_path) -> void
 
 auto Chip8::main_loop() -> void
 {
-    /*
-std::println("{}", static_cast<int>(instruction));
-std::println("PC: {}", m_program_counter);
-if (nibbles.second_nibble <= 0xF)
-{
-    std::println("VX: {}", m_registers.at(nibbles.second_nibble));
-}
-*/
     std::jthread user_input(&Chip8::user_input_thread, this);
 
     auto begin_time = std::chrono::high_resolution_clock::now();
     auto end_time = std::chrono::high_resolution_clock::now();
 
-    while (true)
+    while (m_run)
     {
         const auto time_diff =
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
 
-        if (time_diff > 5) //Clock
+        if (time_diff > 2) //Clock
         {
             begin_time = std::chrono::high_resolution_clock::now();
 
@@ -476,56 +490,14 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 
     if (VF == 0)
     {
-        refresh();
-        clear();
-
-        printw("\n\n\t\t\t\t");
-        /*
-        for (int counter{1}; const auto& pixel: m_display)
-        {
-            if (pixel)
-            {
-                //White Large Square Unicode
-                //printw("\u2B1C");
-                printw("#");
-            }
-            else
-            {
-                //Black Large Square Unicode
-                //printw("\u2B1B");
-                printw(" ");
-            }
-
-            if (counter % DISPLAY_WIDTH == 0)
-            {
-                printw("\n\t\t\t\t");
-            }
-            counter++;
-        }
-        */
-
-        for (int x = 0; x < DISPLAY_WIDTH; x++) {
-            for (int y = 0; y < DISPLAY_HEIGHT; y++) {
-                mvwaddch(win, y + 1, x + 1, m_display.at(x*y) == true ? ACS_BLOCK : "\u2B1B");
-            }
-        }
-
-        box(win, 0, 0);
-        wrefresh(win);
-
-        const std::string keymap_str = "\n\t\t\t\tKEYMAP\n"
-                                    "\t\t\t\t1 2 3 4      1 2 3 C\n"
-                                    "\t\t\t\tQ W E R  =>  4 5 6 D\n"
-                                    "\t\t\t\tA S D F      7 8 9 E\n"
-                                    "\t\t\t\tY X C V      A 0 B F\n";
-        printw(keymap_str.c_str());
+       draw_display();
     }
 }
 
 auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    if (m_keymap.at(VX))
+    if (m_keymap.at(VX).is_pressed)
     {
         m_program_counter += 2;
     }
@@ -534,7 +506,7 @@ auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    if (!m_keymap.at(VX))
+    if (!m_keymap.at(VX).is_pressed)
     {
         m_program_counter += 2;
     }
@@ -567,7 +539,7 @@ auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto val = get_value_char_to_key_map(getch());
+    const auto val = get_value_char_to_key_map(std::getchar());
 
     if (val > 0xF)
     {
@@ -634,40 +606,111 @@ auto Chip8::OP_FX65(const Nibbles nibbles) -> void
     }
 }
 
-auto Chip8::user_input_thread() -> void
+auto Chip8::draw_display() const -> void
 {
-    auto begin_time = std::chrono::high_resolution_clock::now();
-    auto end_time = std::chrono::high_resolution_clock::now();
+    //Clear terminal
+    std::print("\033[H\033[J");
+    std::print("\n\t\t\t\t ");
 
+    for (int i = 0; i < 64; i++)
+    {
+        std::putchar('_');
+    }
+    std::putchar('\n');
+
+    std::print("\t\t\t\t|");
+    for (int counter{1}; const auto& pixel: m_display)
+    {
+        if (pixel)
+        {
+            //White Large Square Unicode
+            //std::print("\u2B1C");
+            std::putchar('#');
+        }
+        else
+        {
+            //Black Large Square Unicode
+            //std::print("\u2B1B");
+            std::putchar(' ');
+        }
+
+        if (counter % DISPLAY_WIDTH == 0)
+        {
+            std::putchar('|');
+            if (counter != DISPLAY_WIDTH * DISPLAY_HEIGHT)
+            {
+                std::print("\n\t\t\t\t|");
+            }
+        }
+        counter++;
+    }
+
+    std::print("\n\t\t\t\t ");
+    for (int i = 0; i < 64; i++)
+    {
+        std::print("\u203E");
+    }
+    std::putchar('\n');
+
+    constexpr auto keymap_str = R"(
+                                KEYMAP
+                                1 2 3 4      1 2 3 C
+                                Q W E R  =>  4 5 6 D
+                                A S D F      7 8 9 E
+                                Y X C V      A 0 B F)";
+
+    std::println("{}", keymap_str);
+}
+
+auto Chip8::user_input_thread() -> void
+
+{
     int c;
+    long time_diff{0};
+
     while (true)
     {
-        for (auto& key: m_keymap)
+        for (auto& [is_pressed, start_time]: m_keymap)
         {
-            end_time = std::chrono::high_resolution_clock::now();
-            const auto time_diff =
-                std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
-
-            if (key and time_diff >= 170)
+            if (is_pressed)
             {
-                key = false;
-                begin_time = std::chrono::high_resolution_clock::now();
-                end_time = std::chrono::high_resolution_clock::now();
+                auto end_time = std::chrono::high_resolution_clock::now();
+                time_diff = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+            }
+            else
+            {
+                time_diff = 0;
+            }
+
+            if (is_pressed and time_diff > 150)
+            {
+                is_pressed = false;
             }
         }
 
-        while ((c = getch()) != ERR)
+        while ((c = std::getchar()) != EOF)
         {
+            c = std::tolower(c);
+            if (c == 'q' or c == 99)
+            {
+                m_run = false;
+                return;
+            }
+
             if (!CHAR_TO_KEYMAP.contains(c))
             {
                 continue;
             }
 
             const auto key_pos = static_cast<int>(CHAR_TO_KEYMAP.at(c));
-            m_keymap.at(key_pos) = true;
+            for (auto& [is_pressed, start_time]: m_keymap)
+            {
+                is_pressed = false;
+            }
 
-            begin_time = std::chrono::high_resolution_clock::now();
-            end_time = std::chrono::high_resolution_clock::now();
+            auto& [is_pressed, start_time] = m_keymap.at(key_pos);
+            is_pressed = true;
+            start_time = std::chrono::high_resolution_clock::now();
         }
     }
 }
@@ -716,12 +759,7 @@ auto main(int argc, char** argv) -> int
 {
     try
     {
-        setlocale(LC_ALL, "");
-        win = initscr();
-        cbreak();
-        noecho();
-        nodelay(stdscr, TRUE);
-        keypad(stdscr, TRUE);
+        enable_raw_mode_input();
 
         Chip8 chip8;
 
@@ -737,7 +775,6 @@ auto main(int argc, char** argv) -> int
 
         chip8.read_rom(file_path);
         chip8.main_loop();
-        endwin();
     }
     catch (const std::runtime_error& re)
     {
