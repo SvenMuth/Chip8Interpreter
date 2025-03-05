@@ -386,7 +386,7 @@ auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
     const std::uint16_t result = VX - VY;
     VX = result & 0xFF;
 
-    if (result > 255)
+    if (result > 0xFF)
     {
         m_registers.at(0xF) = 0;
     }
@@ -404,7 +404,7 @@ auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
     const std::uint16_t result = VY - VX;
     VX = result & 0xFF;
 
-    if (result > 255)
+    if (result > 0xFF)
     {
         m_registers.at(0xF) = 0;
     }
@@ -478,7 +478,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
             bool& screen_pixel = m_display.at(index);
             if (sprite_pixel)
             {
-                if (screen_pixel)
+                if (screen_pixel != 0)
                 {
                     VF = 1;
                 }
@@ -606,7 +606,7 @@ auto Chip8::get_random_number() -> std::uint8_t
 {
     static std::random_device dev;
     static std::mt19937 rng(dev());
-    static std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
+    static std::uniform_int_distribution<std::mt19937::result_type> dist(0x0, 0xFF);
 
     return dist(rng);
 }
@@ -784,7 +784,7 @@ auto process_program_args(const int argc, char** argv, User_Input& user_input) -
 
     default:
         throw std::runtime_error("The wrong number of arguments has been passed!\n"
-                         "Usage: ./Chip8Interpreter [clock speed in Hz] path/to/rom");
+                         "Usage: ./Chip8Interpreter [cycle time (ms)] [instructions per cycle] /path/to/rom");
     }
 }
 
@@ -818,3 +818,16 @@ auto main(int argc, char** argv) -> int
 
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
