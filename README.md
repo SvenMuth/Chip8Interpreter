@@ -2,17 +2,18 @@
 A Chip8 Interpreter running in terminal. Works only on Linux!
 In an IDE terminal not all features may work.
 
-## Usage
-    ./Chip8Interpreter  [Clock (Hz)] /path/to/rom
-
-Without specifying the clock it is set to 60Hz.
-Some ROMs need a much higher or lower clock speed.
-
 ## Building
     $ mkdir build
     $ cd build
     $ cmake ..
     $ make
+
+## Usage
+    ./Chip8Interpreter  [cycle time (ms)] [instructions per cycle] /path/to/rom
+
+- Cycle time: Time per cycle. By default set to 16ms
+- Instructions per cycle: The amount of instructions which are run in one cycle. By default set to 11
+- Path: A path to a ROM has to be specified
 
 ## Keypad
 
