@@ -1,11 +1,7 @@
 #include <iostream>
-#include <print>
 #include <fstream>
 #include <random>
 #include <thread>
-#include <threads.h>
-#include <algorithm>
-#include <utility>
 
 #include "main.h"
 
@@ -19,7 +15,7 @@ extern "C"{
 
     struct termios new_term;
     struct termios old_term;
-    void enable_raw_mode_input()
+    void set_terminal_configuration()
     {
         fcntl(0, F_SETFL, O_NONBLOCK);
         tcgetattr(STDIN_FILENO, &old_term);
@@ -28,7 +24,7 @@ extern "C"{
         tcsetattr(STDIN_FILENO, TCSANOW, &new_term);
     }
 
-    void disable_raw_mode_input()
+    void reset_terminal_configuration()
     {
         tcsetattr(STDIN_FILENO, TCSANOW, &old_term);
     }
@@ -74,7 +70,7 @@ auto Chip8::read_rom(const std::filesystem::path& file_path) -> void
     rom.close();
 }
 
-auto Chip8::main_loop(const int clock_speed_ms) -> void
+auto Chip8::main_loop(const int cycle_time, const int instructions_per_frame) -> void
 {
     std::jthread user_input(&Chip8::user_input_thread, this);
 
@@ -86,19 +82,23 @@ auto Chip8::main_loop(const int clock_speed_ms) -> void
         const auto time_diff =
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
 
-        if (time_diff > clock_speed_ms) //Clock
+        if (time_diff > cycle_time) //Cycle time
         {
             begin_time = std::chrono::high_resolution_clock::now();
 
-            const auto opcode = fetch();
+            for (int i{0}; i < instructions_per_frame; i++)
+            {
+                const auto opcode = fetch();
 
-            const auto nibbles = get_nibbles(opcode);
-            const auto instruction = decode(nibbles);
+                const auto nibbles = get_nibbles(opcode);
+                const auto instruction = decode(nibbles);
 
-            execute(instruction, nibbles);
+                execute(instruction, nibbles);
+            }
+
+            draw_display();
             update_timer();
         }
-
         end_time = std::chrono::high_resolution_clock::now();
     }
 }
@@ -296,8 +296,8 @@ auto Chip8::OP_4XNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VX = m_registers.at(nibbles.second_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
     if (VX == VY)
     {
@@ -307,8 +307,8 @@ auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 
 auto Chip8::OP_9XY0(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VX = m_registers.at(nibbles.second_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
     if (VX != VY)
     {
@@ -331,7 +331,7 @@ auto Chip8::OP_7XNN(const Nibbles nibbles) -> void
 auto Chip8::OP_8XY0(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
     VX = VY;
 }
@@ -339,7 +339,7 @@ auto Chip8::OP_8XY0(const Nibbles nibbles) -> void
 auto Chip8::OP_8XY1(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
     VX |= VY;
 }
@@ -347,7 +347,7 @@ auto Chip8::OP_8XY1(const Nibbles nibbles) -> void
 auto Chip8::OP_8XY2(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
     VX &= VY;
 }
@@ -355,7 +355,7 @@ auto Chip8::OP_8XY2(const Nibbles nibbles) -> void
 auto Chip8::OP_8XY3(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
     VX ^= VY;
 }
@@ -363,10 +363,12 @@ auto Chip8::OP_8XY3(const Nibbles nibbles) -> void
 auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
-    const std::uint16_t sum = VX + VY;
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
-    if (sum > 0xFF)
+    const std::uint16_t result = VX + VY;
+    VX = result & 0xFF;
+
+    if (result > 0xFF)
     {
         m_registers.at(0xF) = 1;
     }
@@ -374,60 +376,60 @@ auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
     {
         m_registers.at(0xF) = 0;
     }
-
-    VX = sum & 0xFF;
 }
 
 auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
-    if (VX > VY)
-    {
-        m_registers.at(0xF) = 1;
-    }
-    else
+    const std::uint16_t result = VX - VY;
+    VX = result & 0xFF;
+
+    if (result > 255)
     {
         m_registers.at(0xF) = 0;
     }
-
-    VX -= VY;
+    else
+    {
+        m_registers.at(0xF) = 1;
+    }
 }
 
 auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto& VY = m_registers.at(nibbles.third_nibble);
+    const auto VY = m_registers.at(nibbles.third_nibble);
 
-    if (VY > VX)
-    {
-        m_registers.at(0xF) = 1;
-    }
-    else
+    const std::uint16_t result = VY - VX;
+    VX = result & 0xFF;
+
+    if (result > 255)
     {
         m_registers.at(0xF) = 0;
     }
-
-    VX = VY - VX;
+    else
+    {
+        m_registers.at(0xF) = 1;
+    }
 }
 
 auto Chip8::OP_8XY6(const Nibbles nibbles) -> void
 {
-    //TODO: Implement further options later
     auto& VX = m_registers.at(nibbles.second_nibble);
-    m_registers.at(0xF) = VX & 0x1;
+    const auto carry = m_registers.at(0xF) = VX & 0x01;
 
     VX >>= 1;
+    m_registers.at(0xF) = carry;
 }
 
 auto Chip8::OP_8XYE(const Nibbles nibbles) -> void
 {
-    //TODO: Implement further options later
     auto& VX = m_registers.at(nibbles.second_nibble);
-    m_registers.at(0xF) = (VX & 0x80u) >> 7u;
+    const auto carry = m_registers.at(0xF) = VX >> 7;
 
     VX <<= 1;
+    m_registers.at(0xF) = carry;
 }
 
 auto Chip8::OP_ANNN(const Nibbles nibbles) -> void
@@ -437,7 +439,6 @@ auto Chip8::OP_ANNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_BNNN(const Nibbles nibbles) -> void
 {
-    //TODO: Implement further options later
     m_program_counter = m_registers.at(0x0) + get_number_NNN(nibbles);
 }
 
@@ -485,11 +486,6 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
                 screen_pixel = !screen_pixel;
             }
         }
-    }
-
-    if (VF == 0)
-    {
-        draw_display();
     }
 }
 
@@ -617,36 +613,36 @@ auto Chip8::get_random_number() -> std::uint8_t
 
 auto Chip8::draw_display() const -> void
 {
-    std::stringstream ss;
+    std::string buffer;
 
     //Clear terminal
-    ss << "\033[H\033[J";
-    ss << "\n\t";
+    buffer += "\033[H\033[J";
+    buffer += "\n\t";
 
     for (int counter{1}; const auto pixel: m_display)
     {
         if (pixel)
         {
             //White Large Square Unicode
-            ss << "\u2B1C";
+            buffer += "\u2B1C";
         }
         else
         {
             //Black Large Square Unicode
-            ss << "\u2B1B";
+            buffer += "\u2B1B";
         }
 
         if (counter % DISPLAY_WIDTH == 0)
         {
             if (counter != DISPLAY_WIDTH * DISPLAY_HEIGHT)
             {
-                ss << "\n\t";
+                buffer += "\n\t";
             }
         }
         counter++;
     }
 
-    ss << '\n';
+    buffer += '\n';
 
     constexpr auto keymap_str = R"(
         KEYMAP
@@ -655,10 +651,10 @@ auto Chip8::draw_display() const -> void
         A S D F      7 8 9 E
         Y X C V      A 0 B F)";
 
-    ss << keymap_str;
-    ss << "\n\n\tPress ESC to exit.\n";
+    buffer += keymap_str;
+    buffer += "\n\n\tPress ESC to exit.\n\n";
 
-    std::println("{}", ss.str());
+    std::fwrite(buffer.data(), sizeof(char), buffer.size(), stdout);
 }
 
 auto Chip8::user_input_thread() -> void
@@ -750,52 +746,74 @@ auto Chip8::get_number_NNN(const Nibbles nibbles) -> std::uint16_t
     return second_nibble << 8 | third_nibble << 4 | fourth_nibble << 0;
 }
 
+auto process_program_args(const int argc, char** argv, User_Input& user_input) -> void
+{
+    auto& [file_path, cycle_time, instructions_per_frame] = user_input;
+
+    switch (argc)
+    {
+    case 2:
+        file_path = argv[1];
+        return;
+
+    case 3:
+        cycle_time = std::stoi(argv[1]);
+        if (cycle_time < 0)
+        {
+            throw std::runtime_error("Cycle time must be a positive number!");
+        }
+
+        file_path = argv[2];
+        return;
+
+    case 4:
+        cycle_time = std::stoi(argv[1]);
+        if (cycle_time < 0)
+        {
+            throw std::runtime_error("Cycle time must be a positive number!");
+        }
+
+        instructions_per_frame = std::stoi(argv[2]);
+        if (instructions_per_frame < 0)
+        {
+            throw std::runtime_error("Instructions per cycle must be a positive number!");
+        }
+
+        file_path = argv[3];
+        return;
+
+    default:
+        throw std::runtime_error("The wrong number of arguments has been passed!\n"
+                         "Usage: ./Chip8Interpreter [clock speed in Hz] path/to/rom");
+    }
+}
+
+
 auto main(int argc, char** argv) -> int
 {
     try
     {
-        enable_raw_mode_input();
+        set_terminal_configuration();
+
+        User_Input user_input;
+        process_program_args(argc, argv, user_input);
+        const auto [file_path, cycle_time, instructions_per_frame] = user_input;
+
         Chip8 chip8;
-
-        std::filesystem::path file_path{};
-        float clock_speed_hz{60.0f};
-
-        if (argc == 2)
-        {
-            file_path = argv[1];
-        }
-        else if (argc == 3)
-        {
-            const auto number = std::stof(argv[1]);
-            if (number < 0)
-            {
-                throw std::runtime_error("Clock speed must be a positive number!");
-            }
-            clock_speed_hz = number;
-            file_path = argv[2];
-        }
-        else
-        {
-            throw std::runtime_error("The wrong number of arguments has been passed!\n"
-                                     "./Chip8Interpreter [clock speed in Hz] ROM");
-        }
-
-        const int clock_speed_ms = static_cast<int>(1.0f / clock_speed_hz * 1000.0f);
-
         chip8.read_rom(file_path);
-        chip8.main_loop(clock_speed_ms);
+        chip8.main_loop(cycle_time, instructions_per_frame);
     }
     catch (const std::runtime_error& re)
     {
-        std::println(std::cerr, "{}", re.what());
+        std::fprintf(stderr, "%s", re.what());
     }
     catch (const std::invalid_argument& ia)
     {
-        std::println(std::cerr, "{}", ia.what());
+        std::fprintf(stderr, "%s", ia.what());
     }
     catch (...)
     {
-        std::println(std::cerr, "Unexpected exception occurred!");
+        std::fprintf(stderr, "Unexpected exception occurred!");
     }
 
     return 0;

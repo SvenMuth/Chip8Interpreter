@@ -99,7 +99,7 @@ public:
     Chip8();
 
     auto read_rom(const std::filesystem::path& file_path) -> void;
-    auto main_loop(int clock_speed_ms) -> void;
+    auto main_loop(int cycle_time, int instructions_per_frame) -> void;
     auto update_timer() -> void;
 
     [[nodiscard]] auto fetch() -> std::uint16_t;
@@ -185,6 +185,16 @@ class CHIP_48: public Chip8
 {
 
 };
+
+
+struct User_Input
+{
+    std::filesystem::path file_path{};
+    int cycle_time{16};
+    int instructions_per_frame{11};
+};
+
+auto process_program_args(int argc, char** argv, User_Input& user_input) -> void;
 
 #endif //MAIN_H
 
