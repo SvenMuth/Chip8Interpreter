@@ -147,6 +147,7 @@ public:
     auto OP_FX55(Nibbles nibbles) -> void;
     auto OP_FX65(Nibbles nibbles) -> void;
 
+    static auto get_random_number() -> std::uint8_t;
     auto draw_display() const -> void;
     auto user_input_thread() -> void;
 

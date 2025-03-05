@@ -9,6 +9,7 @@
 
 #include "main.h"
 
+
 extern "C"{
 #include <unistd.h>
 #include <termios.h>
@@ -391,7 +392,7 @@ auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
         m_registers.at(0xF) = 0;
     }
 
-    VX = VX - VY;
+    VX -= VY;
 }
 
 auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
@@ -443,12 +444,8 @@ auto Chip8::OP_BNNN(const Nibbles nibbles) -> void
 auto Chip8::OP_CXNN(const Nibbles nibbles) -> void
 {
     auto& VX = m_registers.at(nibbles.second_nibble);
-
-    std::random_device dev;
-    std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
-
-    VX = dist(rng) & get_number_NN(nibbles);
+    const auto random_number = get_random_number();
+    VX = random_number & get_number_NN(nibbles);
 }
 
 auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
@@ -609,9 +606,19 @@ auto Chip8::OP_FX65(const Nibbles nibbles) -> void
     }
 }
 
+auto Chip8::get_random_number() -> std::uint8_t
+{
+    static std::random_device dev;
+    static std::mt19937 rng(dev());
+    static std::uniform_int_distribution<std::mt19937::result_type> dist(0, 255);
+
+    return dist(rng);
+}
+
 auto Chip8::draw_display() const -> void
 {
     std::stringstream ss;
+
     //Clear terminal
     ss << "\033[H\033[J";
     ss << "\n\t";
