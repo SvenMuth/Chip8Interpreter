@@ -82,7 +82,7 @@ auto Chip8::main_loop(const int cycle_time, const int instructions_per_frame) ->
         const auto time_diff =
             std::chrono::duration_cast<std::chrono::milliseconds>(end_time - begin_time).count();
 
-        if (time_diff > cycle_time) //Cycle time
+        if (time_diff > cycle_time)
         {
             begin_time = std::chrono::high_resolution_clock::now();
 
@@ -123,7 +123,7 @@ auto Chip8::fetch() -> std::uint16_t
 
     m_program_counter += 2;
 
-    std::uint16_t opcode{0x0};
+    std::uint16_t opcode{0};
     opcode |= opcode_first_byte << 8;
     opcode |= opcode_second_byte << 0;
 
@@ -278,7 +278,7 @@ auto Chip8::OP_2NNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_3XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     if (VX == get_number_NN(nibbles))
     {
         m_program_counter += 2;
@@ -287,7 +287,7 @@ auto Chip8::OP_3XNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_4XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     if (VX != get_number_NN(nibbles))
     {
         m_program_counter += 2;
@@ -296,8 +296,8 @@ auto Chip8::OP_4XNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 {
-    const auto VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    const auto VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     if (VX == VY)
     {
@@ -307,8 +307,8 @@ auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 
 auto Chip8::OP_9XY0(const Nibbles nibbles) -> void
 {
-    const auto VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    const auto VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     if (VX != VY)
     {
@@ -318,118 +318,118 @@ auto Chip8::OP_9XY0(const Nibbles nibbles) -> void
 
 auto Chip8::OP_6XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     VX = get_number_NN(nibbles);
 }
 
 auto Chip8::OP_7XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     VX += get_number_NN(nibbles);
 }
 
 auto Chip8::OP_8XY0(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     VX = VY;
 }
 
 auto Chip8::OP_8XY1(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     VX |= VY;
 }
 
 auto Chip8::OP_8XY2(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     VX &= VY;
 }
 
 auto Chip8::OP_8XY3(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     VX ^= VY;
 }
 
 auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     const std::uint16_t result = VX + VY;
     VX = result & 0xFF;
 
     if (result > 0xFF)
     {
-        m_registers.at(0xF) = 1;
+        set_VF(1);
     }
     else
     {
-        m_registers.at(0xF) = 0;
+        set_VF(0);
     }
 }
 
 auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     const std::uint16_t result = VX - VY;
     VX = result & 0xFF;
 
     if (result > 0xFF)
     {
-        m_registers.at(0xF) = 0;
+        set_VF(0);
     }
     else
     {
-        m_registers.at(0xF) = 1;
+        set_VF(1);
     }
 }
 
 auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto VY = m_registers.at(nibbles.third_nibble);
+    auto& VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     const std::uint16_t result = VY - VX;
     VX = result & 0xFF;
 
     if (result > 0xFF)
     {
-        m_registers.at(0xF) = 0;
+        set_VF(0);
     }
     else
     {
-        m_registers.at(0xF) = 1;
+        set_VF(1);
     }
 }
 
 auto Chip8::OP_8XY6(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto carry = m_registers.at(0xF) = VX & 0x01;
+    auto& VX = get_VX(nibbles);
+    const auto carry = VX & 0x01;
 
     VX >>= 1;
-    m_registers.at(0xF) = carry;
+    set_VF(carry);
 }
 
 auto Chip8::OP_8XYE(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
-    const auto carry = m_registers.at(0xF) = VX >> 7;
+    auto& VX = get_VX(nibbles);
+    const auto carry = VX >> 7;
 
     VX <<= 1;
-    m_registers.at(0xF) = carry;
+    set_VF(carry);
 }
 
 auto Chip8::OP_ANNN(const Nibbles nibbles) -> void
@@ -444,26 +444,22 @@ auto Chip8::OP_BNNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_CXNN(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     const auto random_number = get_random_number();
     VX = random_number & get_number_NN(nibbles);
 }
 
 auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 {
-    auto [first_nibble, second_nibble,
-        third_nibble, fourth_nibble] = nibbles;
-
-    const auto VX = m_registers.at(second_nibble);
-    const auto VY = m_registers.at(third_nibble);
+    const auto VX = get_VX(nibbles);
+    const auto VY = get_VY(nibbles);
 
     const auto X = VX % DISPLAY_WIDTH;
     const auto Y = VY % DISPLAY_HEIGHT;
 
-    auto& VF = m_registers.at(0xF);
-    VF = 0;
+    set_VF(0);
 
-    for (unsigned int row{0}; row < fourth_nibble; row++)
+    for (unsigned int row{0}; row < nibbles.fourth_nibble; row++)
     {
         const uint8_t sprite_byte = m_memory.at(m_index_register + row);
         for (unsigned int col = 0; col < 8; col++)
@@ -480,7 +476,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
             {
                 if (screen_pixel != 0)
                 {
-                    VF = 1;
+                    set_VF(1);
                 }
 
                 screen_pixel = !screen_pixel;
@@ -491,7 +487,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     if (m_keymap.at(VX).is_pressed)
     {
         m_program_counter += 2;
@@ -500,7 +496,7 @@ auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 
 auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     if (!m_keymap.at(VX).is_pressed)
     {
         m_program_counter += 2;
@@ -509,31 +505,31 @@ auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX07(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     VX = m_delay_timer;
 }
 
 auto Chip8::OP_FX15(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     m_delay_timer = VX;
 }
 
 auto Chip8::OP_FX18(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     m_sound_timer = VX;
 }
 
 auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     m_index_register += VX;
 }
 
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
 
     for (int val{0}; val < m_keymap.size(); val++)
     {
@@ -548,13 +544,13 @@ auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX29(const Nibbles nibbles) -> void
 {
-    auto& VX = m_registers.at(nibbles.second_nibble);
+    auto& VX = get_VX(nibbles);
     m_index_register = FONTSET_START_ADDRESS + 5 * VX;
 }
 
 auto Chip8::OP_FX33(const Nibbles nibbles) -> void
 {
-    auto number = m_registers.at(nibbles.second_nibble);;
+    auto number = get_VX(nibbles);
     const auto I = m_index_register;
 
     m_memory.at(I + 2) = number % 10;
@@ -569,36 +565,36 @@ auto Chip8::OP_FX33(const Nibbles nibbles) -> void
 auto Chip8::OP_FX55(const Nibbles nibbles) -> void
 {
     const auto I = m_index_register;
-    const auto VX = nibbles.second_nibble;
+    const auto index_X = nibbles.second_nibble;
 
-    if (VX != 0)
+    if (index_X != 0)
     {
-        for (unsigned int index = 0; index <= VX; index++)
+        for (unsigned int index = 0; index <= index_X; index++)
         {
             m_memory.at(I + index) = m_registers.at(index);
         }
     }
     else
     {
-        m_memory.at(I) = m_registers.at(0);
+        m_memory.at(I) = m_registers.at(0x0);
     }
 }
 
 auto Chip8::OP_FX65(const Nibbles nibbles) -> void
 {
     const auto I = m_index_register;
-    const auto VX = nibbles.second_nibble;
+    const auto index_X = nibbles.second_nibble;
 
-    if (VX != 0)
+    if (index_X != 0)
     {
-        for (unsigned int index = 0; index <= VX; index++)
+        for (unsigned int index = 0; index <= index_X; index++)
         {
             m_registers.at(index) = m_memory.at(I + index);
         }
     }
     else
     {
-        m_registers.at(0) = m_memory.at(I);
+        m_registers.at(0x0) = m_memory.at(I);
     }
 }
 
@@ -660,7 +656,7 @@ auto Chip8::draw_display() const -> void
 auto Chip8::user_input_thread() -> void
 
 {
-    int c;
+    int c{0};
     long time_diff{0};
 
     while (true)
@@ -679,7 +675,7 @@ auto Chip8::user_input_thread() -> void
                 continue;
             }
 
-            if (time_diff > 150) //Let key pressed for specific amount of ms
+            if (time_diff > TIME_TILL_KEY_RESETS_MS)
             {
                 is_pressed = false;
             }
@@ -688,7 +684,7 @@ auto Chip8::user_input_thread() -> void
         while ((c = std::getchar()) != EOF)
         {
             c = std::tolower(c);
-            if (c == 27) //ESC
+            if (c == ESC_KEY)
             {
                 m_run = false;
                 return;
@@ -710,6 +706,21 @@ auto Chip8::user_input_thread() -> void
             start_time = std::chrono::high_resolution_clock::now();
         }
     }
+}
+
+auto Chip8::get_VX(const Nibbles nibbles) -> std::uint8_t&
+{
+    return m_registers.at(nibbles.second_nibble);
+}
+
+auto Chip8::get_VY(const Nibbles nibbles) -> std::uint8_t&
+{
+    return m_registers.at(nibbles.third_nibble);
+}
+
+auto Chip8::set_VF(std::uint8_t val) -> void
+{
+    m_registers.at(0xF) = val;
 }
 
 auto Chip8::get_value_char_to_key_map(const int key) -> std::uint8_t

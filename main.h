@@ -13,7 +13,35 @@
 class Chip8
 {
 public:
-    enum class Instruction
+    static constexpr std::array<uint8_t, 80> FONTS
+    {
+        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+        0x20, 0x60, 0x20, 0x20, 0x70, // 1
+        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+        0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+    };
+
+    struct Nibbles
+    {
+        std::uint8_t first_nibble;
+        std::uint8_t second_nibble;
+        std::uint8_t third_nibble;
+        std::uint8_t fourth_nibble;
+    };
+
+    enum class Instruction: std::uint8_t
     {
         I_00E0 = 0, I_00EE = 1,
         I_1NNN = 2,
@@ -52,50 +80,28 @@ public:
         K_Y = 0xA, K_X = 0x0, K_C = 0xB, K_V = 0xF,
     };
 
+    static inline const std::unordered_map<int, Keymap> CHAR_TO_KEYMAP
+    {
+        {49, Keymap::K_1}, {50, Keymap::K_2}, {51, Keymap::K_3}, {52, Keymap::K_4},
+        {113, Keymap::K_Q}, {119, Keymap::K_W}, {101, Keymap::K_E}, {114, Keymap::K_R},
+        {97, Keymap::K_A}, {115, Keymap::K_S}, {100, Keymap::K_D}, {102, Keymap::K_F},
+        {121, Keymap::K_Y}, {120, Keymap::K_X}, {99, Keymap::K_C}, {118, Keymap::K_V},
+    };
+
     struct Keypress
     {
         std::atomic_bool is_pressed{false};
-        std::chrono::time_point<std::chrono::system_clock> start_time;
-    };
-
-    struct Nibbles
-    {
-        std::uint8_t first_nibble;
-        std::uint8_t second_nibble;
-        std::uint8_t third_nibble;
-        std::uint8_t fourth_nibble;
-    };
-
-    static inline const std::unordered_map<int, Keymap> CHAR_TO_KEYMAP{
-            {49, Keymap::K_1}, {50, Keymap::K_2}, {51, Keymap::K_3}, {52, Keymap::K_4},
-            {113, Keymap::K_Q}, {119, Keymap::K_W}, {101, Keymap::K_E}, {114, Keymap::K_R},
-            {97, Keymap::K_A}, {115, Keymap::K_S}, {100, Keymap::K_D}, {102, Keymap::K_F},
-            {121, Keymap::K_Y}, {120, Keymap::K_X}, {99, Keymap::K_C}, {118, Keymap::K_V},
-        };
-
-    static constexpr std::array<uint8_t, 80> FONTS{
-        0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
-        0x20, 0x60, 0x20, 0x20, 0x70, // 1
-        0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
-        0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
-        0x90, 0x90, 0xF0, 0x10, 0x10, // 4
-        0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
-        0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
-        0xF0, 0x10, 0x20, 0x40, 0x40, // 7
-        0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
-        0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
-        0xF0, 0x90, 0xF0, 0x90, 0x90, // A
-        0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
-        0xF0, 0x80, 0x80, 0x80, 0xF0, // C
-        0xE0, 0x90, 0x90, 0x90, 0xE0, // D
-        0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
-        0xF0, 0x80, 0xF0, 0x80, 0x80, // F
+        std::chrono::time_point<std::chrono::system_clock> start_time{};
     };
 
     static constexpr std::uint16_t START_ADDRESS{0x200};
     static constexpr int FONTSET_START_ADDRESS{0x50};
+
     static constexpr int DISPLAY_WIDTH{64};
     static constexpr int DISPLAY_HEIGHT{32};
+
+    static constexpr int ESC_KEY{27};
+    static constexpr int TIME_TILL_KEY_RESETS_MS{150};
 
     Chip8();
 
@@ -148,9 +154,13 @@ public:
     auto OP_FX55(Nibbles nibbles) -> void;
     auto OP_FX65(Nibbles nibbles) -> void;
 
-    static auto get_random_number() -> std::uint8_t;
+    [[nodiscard]]static auto get_random_number() -> std::uint8_t;
     auto draw_display() const -> void;
     auto user_input_thread() -> void;
+
+    [[nodiscard]]auto get_VX(Nibbles nibbles) -> std::uint8_t&;
+    [[nodiscard]]auto get_VY(Nibbles nibbles) -> std::uint8_t&;
+    auto set_VF(std::uint8_t val) -> void;
 
     [[nodiscard]]static auto get_value_char_to_key_map(int key) -> std::uint8_t;
     [[nodiscard]]static auto get_nibbles(std::uint16_t instruction) -> Nibbles;
