@@ -278,7 +278,7 @@ auto Chip8::OP_2NNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_3XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     if (VX == get_number_NN(nibbles))
     {
         m_program_counter += 2;
@@ -287,7 +287,7 @@ auto Chip8::OP_3XNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_4XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     if (VX != get_number_NN(nibbles))
     {
         m_program_counter += 2;
@@ -296,7 +296,7 @@ auto Chip8::OP_4XNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 {
-    const auto VX = get_VX(nibbles);
+    const auto VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     if (VX == VY)
@@ -307,7 +307,7 @@ auto Chip8::OP_5XY0(const Nibbles nibbles) -> void
 
 auto Chip8::OP_9XY0(const Nibbles nibbles) -> void
 {
-    const auto VX = get_VX(nibbles);
+    const auto VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     if (VX != VY)
@@ -318,19 +318,19 @@ auto Chip8::OP_9XY0(const Nibbles nibbles) -> void
 
 auto Chip8::OP_6XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     VX = get_number_NN(nibbles);
 }
 
 auto Chip8::OP_7XNN(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     VX += get_number_NN(nibbles);
 }
 
 auto Chip8::OP_8XY0(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     VX = VY;
@@ -338,7 +338,7 @@ auto Chip8::OP_8XY0(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY1(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     VX |= VY;
@@ -346,7 +346,7 @@ auto Chip8::OP_8XY1(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY2(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     VX &= VY;
@@ -354,7 +354,7 @@ auto Chip8::OP_8XY2(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY3(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     VX ^= VY;
@@ -362,7 +362,7 @@ auto Chip8::OP_8XY3(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     const std::uint16_t result = VX + VY;
@@ -380,7 +380,7 @@ auto Chip8::OP_8XY4(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     const std::uint16_t result = VX - VY;
@@ -398,7 +398,7 @@ auto Chip8::OP_8XY5(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     const std::uint16_t result = VY - VX;
@@ -416,7 +416,7 @@ auto Chip8::OP_8XY7(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XY6(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto carry = VX & 0x01;
 
     VX >>= 1;
@@ -425,7 +425,7 @@ auto Chip8::OP_8XY6(const Nibbles nibbles) -> void
 
 auto Chip8::OP_8XYE(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto carry = VX >> 7;
 
     VX <<= 1;
@@ -444,14 +444,14 @@ auto Chip8::OP_BNNN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_CXNN(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     const auto random_number = get_random_number();
     VX = random_number & get_number_NN(nibbles);
 }
 
 auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 {
-    const auto VX = get_VX(nibbles);
+    const auto VX = get_ref_VX(nibbles);
     const auto VY = get_VY(nibbles);
 
     const auto X = VX % DISPLAY_WIDTH;
@@ -487,7 +487,7 @@ auto Chip8::OP_DXYN(const Nibbles nibbles) -> void
 
 auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     if (m_keymap.at(VX).is_pressed)
     {
         m_program_counter += 2;
@@ -496,7 +496,7 @@ auto Chip8::OP_EX9E(const Nibbles nibbles) -> void
 
 auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     if (!m_keymap.at(VX).is_pressed)
     {
         m_program_counter += 2;
@@ -505,31 +505,31 @@ auto Chip8::OP_EXA1(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX07(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     VX = m_delay_timer;
 }
 
 auto Chip8::OP_FX15(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     m_delay_timer = VX;
 }
 
 auto Chip8::OP_FX18(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     m_sound_timer = VX;
 }
 
 auto Chip8::OP_FX1E(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     m_index_register += VX;
 }
 
 auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
 
     for (int val{0}; val < m_keymap.size(); val++)
     {
@@ -544,13 +544,13 @@ auto Chip8::OP_FX0A(const Nibbles nibbles) -> void
 
 auto Chip8::OP_FX29(const Nibbles nibbles) -> void
 {
-    auto& VX = get_VX(nibbles);
+    auto& VX = get_ref_VX(nibbles);
     m_index_register = FONTSET_START_ADDRESS + 5 * VX;
 }
 
 auto Chip8::OP_FX33(const Nibbles nibbles) -> void
 {
-    auto number = get_VX(nibbles);
+    auto number = get_ref_VX(nibbles);
     const auto I = m_index_register;
 
     m_memory.at(I + 2) = number % 10;
@@ -708,17 +708,17 @@ auto Chip8::user_input_thread() -> void
     }
 }
 
-auto Chip8::get_VX(const Nibbles nibbles) -> std::uint8_t&
+auto Chip8::get_ref_VX(const Nibbles nibbles) -> std::uint8_t&
 {
     return m_registers.at(nibbles.second_nibble);
 }
 
-auto Chip8::get_VY(const Nibbles nibbles) -> std::uint8_t&
+auto Chip8::get_VY(const Nibbles nibbles) const -> std::uint8_t
 {
     return m_registers.at(nibbles.third_nibble);
 }
 
-auto Chip8::set_VF(std::uint8_t val) -> void
+auto Chip8::set_VF(const std::uint8_t val) -> void
 {
     m_registers.at(0xF) = val;
 }
@@ -787,7 +787,7 @@ auto process_program_args(const int argc, char** argv, User_Input& user_input) -
         instructions_per_frame = std::stoi(argv[2]);
         if (instructions_per_frame < 0)
         {
-            throw std::runtime_error("Instructions per cycle must be a positive number!");
+            throw std::runtime_error("Instructions per frame must be a positive number!");
         }
 
         file_path = argv[3];
@@ -795,7 +795,7 @@ auto process_program_args(const int argc, char** argv, User_Input& user_input) -
 
     default:
         throw std::runtime_error("The wrong number of arguments has been passed!\n"
-                         "Usage: ./Chip8Interpreter [cycle time (ms)] [instructions per cycle] /path/to/rom");
+                         "Usage: ./Chip8Interpreter [cycle time (ms)] [instructions per frame] /path/to/rom");
     }
 }
 

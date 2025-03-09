@@ -103,6 +103,7 @@ public:
     static constexpr int ESC_KEY{27};
     static constexpr int TIME_TILL_KEY_RESETS_MS{150};
 
+
     Chip8();
 
     auto read_rom(const std::filesystem::path& file_path) -> void;
@@ -158,8 +159,8 @@ public:
     auto draw_display() const -> void;
     auto user_input_thread() -> void;
 
-    [[nodiscard]]auto get_VX(Nibbles nibbles) -> std::uint8_t&;
-    [[nodiscard]]auto get_VY(Nibbles nibbles) -> std::uint8_t&;
+    [[nodiscard]]auto get_ref_VX(Nibbles nibbles) -> std::uint8_t&;
+    [[nodiscard]]auto get_VY(Nibbles nibbles) const -> std::uint8_t;
     auto set_VF(std::uint8_t val) -> void;
 
     [[nodiscard]]static auto get_value_char_to_key_map(int key) -> std::uint8_t;

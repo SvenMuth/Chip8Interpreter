@@ -9,10 +9,10 @@ In an IDE terminal not all features may work.
     $ make
 
 ## Usage
-    ./Chip8Interpreter  [cycle time (ms)] [instructions per cycle] /path/to/rom
+    ./Chip8Interpreter  [cycle time (ms)] [instructions per frame] /path/to/rom
 
 - Cycle time: Time per cycle. By default set to 16ms
-- Instructions per cycle: The amount of instructions which are run in one cycle. By default set to 11
+- Instructions per frame: The amount of instructions which are run in one cycle. By default set to 11
 - Path: A path to a ROM has to be specified
 
 ## Keypad
