@@ -71,13 +71,13 @@ public:
         * 1 2 3 4      1 2 3 C
         * Q W E R  =>  4 5 6 D
         * A S D F      7 8 9 E
-        * Y X C V      A 0 B F
+        * Z X C V      A 0 B F
         */
 
         K_1 = 0x1, K_2 = 0x2, K_3 = 0x3, K_4 = 0xC,
         K_Q = 0x4, K_W = 0x5, K_E = 0x6, K_R = 0xD,
         K_A = 0x7, K_S = 0x8, K_D = 0x9, K_F = 0xE,
-        K_Y = 0xA, K_X = 0x0, K_C = 0xB, K_V = 0xF,
+        K_Z = 0xA, K_X = 0x0, K_C = 0xB, K_V = 0xF,
     };
 
     static inline const std::unordered_map<int, Keymap> CHAR_TO_KEYMAP
@@ -85,7 +85,7 @@ public:
         {49, Keymap::K_1}, {50, Keymap::K_2}, {51, Keymap::K_3}, {52, Keymap::K_4},
         {113, Keymap::K_Q}, {119, Keymap::K_W}, {101, Keymap::K_E}, {114, Keymap::K_R},
         {97, Keymap::K_A}, {115, Keymap::K_S}, {100, Keymap::K_D}, {102, Keymap::K_F},
-        {121, Keymap::K_Y}, {120, Keymap::K_X}, {99, Keymap::K_C}, {118, Keymap::K_V},
+        {122, Keymap::K_Z}, {120, Keymap::K_X}, {99, Keymap::K_C}, {118, Keymap::K_V},
     };
 
     struct Keypress
