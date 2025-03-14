@@ -29,7 +29,7 @@ In an IDE terminal not all features may work.
 | `8`        | `S`          |
 | `9`        | `D`          |
 | `0`        | `X`          |
-| `A`        | `Y`          |
+| `A`        | `Z`          |
 | `B`        | `C`          |
 | `C`        | `4`          |
 | `D`        | `R`          |
